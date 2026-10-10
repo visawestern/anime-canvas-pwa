@@ -128,3 +128,21 @@ until a number landed in command slot. Duplicate "Рин" entries came from re-c
   CanvasStage + EntityPreview append "Пропущено битых штрихов: N" to status. 1 playback test.
 - Verification: 163/163 tests, `tsc` 0, coverage 89.7% lines / 80.1% branches / 90% funcs, build OK.
   Pushed 5c4a7ff. User must restart their own dev server to pick it up (`npm run dev -- -p 3000`).
+
+## Session 8 — logo skill, SVG-craft distillation, reference remix base
+- Skill `kaankiziltug/logo-design-skill` compatibility-checked (Agent Skills format, Markdown+stdlib
+  Python, OpenCode-named in README) and installed to `~/.config/opencode/skills/logo-design` (full,
+  incl. 13MB reference library; audit script smoke-tested).
+- Surbhi pencil-animation lesson analyzed: stroke-draw (dasharray/dashoffset + per-path ids/delays),
+  CSS/`<animate>`/JS layers, Vivus.js, path hygiene. Note added as
+  `references/svg-pencil-animation.md` in the installed skill + SKILL.md map row.
+- `lib/path-surgery.ts`: RDP simplify + trimPoints; thumbnails render simplified (EntityThumb passes
+  `{simplify: 1.5}`). 5 surgery tests.
+- `lib/svg-craft.ts` distillation: 7 rules, svgCraftBlock wired into ALL generation prompts,
+  auditCraft (anchors/micro/colors/near-miss angles/unclosed score 0-100) shown in generation statuses.
+  8 craft tests.
+- Reference remix base: Wikimedia `Anime_Girl.svg` (Niabot, CC BY 3.0 — remix legal with credit),
+  checked into `public/reference/` + `lib/reference-scene.ts` (file-locked stats test, technique brief).
+  SceneComposer "Изменить эталон по промпту": brief prepended to generation, scenes marked basedOn,
+  base survives queue pause/resume. Entity.basedOn added, forkScene preserves it.
+- Verification: 191/191 tests, `tsc` 0, coverage 89.8% lines / 80.5% branches / 90.4% funcs, build OK.

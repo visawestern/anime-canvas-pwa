@@ -7,7 +7,7 @@ vi.mock('@/lib/pencil-renderer', async (importOriginal) => {
 });
 
 import { SceneComposer } from '@/components/SceneComposer';
-import { saveEntity } from '@/lib/entities';
+import { saveEntity, listEntities } from '@/lib/entities';
 
 const script = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
@@ -68,6 +68,18 @@ describe('SceneComposer (cast + missing proposals + paused queue)', () => {
     render(<SceneComposer />);
     fireEvent.change(screen.getByLabelText(/шаблон сцены/i), { target: { value: 'scene-duel-bridge' } });
     expect((screen.getByLabelText(/промпт сцены/i) as HTMLTextAreaElement).value).toContain('Кей');
+  });
+
+  it('remix uses the reference look and marks the scene basedOn (default template)', async () => {
+    render(<SceneComposer />);
+    fireEvent.click(screen.getByRole('button', { name: /изменить эталон/i }));
+    expect((screen.getByLabelText(/промпт сцены/i) as HTMLTextAreaElement).value).toMatch(/^Измени эталон/);
+    fireEvent.click(screen.getByRole('button', { name: /собрать сцену/i }));
+    await waitFor(() => expect(screen.getByText(/сцена готова/i)).toBeInTheDocument());
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(body.prompt).toContain('Эталон');
+    const scenes = await listEntities('scene');
+    expect(scenes.some((s) => s.basedOn === 'anime-girl')).toBe(true);
   });
 
   it('generated scene plays in the preview canvas (visual proof, not just text)', async () => {

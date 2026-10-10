@@ -25,6 +25,8 @@ export type QueuedStatus = 'paused' | 'ready';
 export interface QueuedPrompt extends SceneRequest {
   id: string;
   status: QueuedStatus;
+  /** remix base reference id (e.g. 'anime-girl') — preserved across pause/resume */
+  basedOn?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -70,10 +72,11 @@ function isQueued(v: unknown): v is QueuedPrompt {
 }
 
 /** The current scene prompt is never lost: pause it into the queue while missing cast is drawn. */
-export async function enqueuePaused(req: SceneRequest): Promise<QueuedPrompt> {
+export async function enqueuePaused(req: SceneRequest, basedOn: string | null = null): Promise<QueuedPrompt> {
   const now = Date.now();
   const q: QueuedPrompt = {
     ...req,
+    basedOn,
     id: `qp-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     status: 'paused',
     createdAt: now,
@@ -111,7 +114,7 @@ export async function editQueuedPrompt(
 }
 
 export type ResumeResult =
-  | { status: 'ready'; request: SceneRequest }
+  | { status: 'ready'; request: SceneRequest; basedOn: string | null }
   | { status: 'still-missing'; missing: MissingReport };
 
 /** Re-check the cast; when complete the paused prompt becomes generatable (status ready). */
@@ -123,7 +126,7 @@ export async function resumeQueuedPrompt(id: string, lib: LibraryIndex): Promise
     const ready: QueuedPrompt = { ...q, status: 'ready', updatedAt: Date.now() };
     await saveScript(qkey(id), ready);
     const { prompt, characters, items, location } = ready;
-    return { status: 'ready', request: { prompt, characters, items, location } };
+    return { status: 'ready', request: { prompt, characters, items, location }, basedOn: ready.basedOn ?? null };
   }
   return { status: 'still-missing', missing };
 }

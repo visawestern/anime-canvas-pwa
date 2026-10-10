@@ -11,6 +11,12 @@ import {
 } from '@/lib/entities';
 import { validateSceneLayers } from '@/lib/lesson-pipeline';
 import { auditCraft } from '@/lib/svg-craft';
+import {
+  REFERENCE_ID,
+  REFERENCE_META,
+  REFERENCE_BRIEF,
+  REFERENCE_REMIX_PREFIX,
+} from '@/lib/reference-scene';
 import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 import {
   resolveCast,
@@ -45,6 +51,7 @@ export function SceneComposer() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [pendingParent, setPendingParent] = useState<{ id: string; name: string } | null>(null);
+  const [remixBase, setRemixBase] = useState<string | null>(null);
   const [preview, setPreview] = useState<DrawingScript | null>(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -71,7 +78,12 @@ export function SceneComposer() {
     };
   }
 
-  async function generateScene(req: SceneRequest, queueId?: string, parentId?: string) {
+  async function generateScene(
+    req: SceneRequest,
+    queueId?: string,
+    parentId?: string,
+    extra?: { baseBrief?: string; basedOn?: string | null },
+  ) {
     const [characters, items, locations] = await Promise.all([
       Promise.all(req.characters.map((n) => findEntityByName('character', n))),
       Promise.all(req.items.map((n) => findEntityByName('item', n))),
@@ -85,10 +97,11 @@ export function SceneComposer() {
         location: locations ?? null,
       },
     );
+    const fullPrompt = extra?.baseBrief ? `${extra.baseBrief}\n\n${composed}` : composed;
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ kind: 'scene', prompt: composed }),
+      body: JSON.stringify({ kind: 'scene', prompt: fullPrompt }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'scene generation failed');
@@ -105,6 +118,7 @@ export function SceneComposer() {
       parentId: parentId ?? null,
       locationId: locationEntity?.id ?? null,
       cast: { characters: req.characters, items: req.items },
+      basedOn: extra?.basedOn ?? null,
     });
     if (queueId) await removeQueued(queueId);
     return scene;
@@ -125,7 +139,7 @@ export function SceneComposer() {
       };
       const report = resolveCast(req, await libraryIndex());
       if (!isComplete(report)) {
-        await enqueuePaused(req);
+        await enqueuePaused(req, remixBase);
         setMissing(report);
         setStatus('Не все нарисованы — промпт сохранён в очередь на паузе.');
         await refresh();
@@ -133,8 +147,9 @@ export function SceneComposer() {
       }
       setMissing(null);
       setStatus('Все на месте. Gemma собирает сцену…');
-      const scene = await generateScene(req, undefined, pendingParent?.id);
+      const scene = await generateScene(req, undefined, pendingParent?.id, remixBase ? { baseBrief: REFERENCE_BRIEF, basedOn: remixBase } : undefined);
       setPendingParent(null);
+      setRemixBase(null);
       setPreview(scene.script);
       setStatus(`Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.`);
       await refresh();
@@ -152,7 +167,12 @@ export function SceneComposer() {
       if (result.status === 'ready') {
         setMissing(null);
         setStatus('Состав полный. Gemma собирает сцену…');
-        const scene = await generateScene(result.request, id);
+        const scene = await generateScene(
+          result.request,
+          id,
+          undefined,
+          result.basedOn ? { baseBrief: REFERENCE_BRIEF, basedOn: result.basedOn } : undefined,
+        );
         setPreview(scene.script);
         setStatus(`Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.`);
       } else {
@@ -182,6 +202,32 @@ export function SceneComposer() {
   return (
     <section aria-label="Композитор сцен" className="card">
       <h2>Новая сцена</h2>
+      <div className="card" aria-label="Эталон для ремикса">
+        <h3>Эталон: {REFERENCE_META.title}</h3>
+        <img src={REFERENCE_META.fileUrl} alt="Эталонная сцена Anime Girl" width={256} />
+        <p className="status">
+          Дефолтный шаблон сцены. {REFERENCE_META.author}, {REFERENCE_META.license},{' '}
+          <a href={REFERENCE_META.sourceUrl}>источник</a>. Техника: {REFERENCE_META.techniques[1]};{' '}
+          {REFERENCE_META.techniques[2]}.
+        </p>
+        <div className="btn-row">
+          <button
+            type="button"
+            onClick={() => {
+              setPrompt(REFERENCE_REMIX_PREFIX);
+              setRemixBase(REFERENCE_ID);
+            }}
+          >
+            Изменить эталон по промпту
+          </button>
+          {remixBase && (
+            <button type="button" onClick={() => setRemixBase(null)}>
+              Без эталона
+            </button>
+          )}
+        </div>
+        {remixBase && <p>Ремикс эталона: бриф подставится в генерацию, сцена пометится basedOn.</p>}
+      </div>
       <label>
         Шаблон сцены
         <select

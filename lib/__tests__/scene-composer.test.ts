@@ -87,6 +87,18 @@ describe('paused prompt queue (never lose the prompt)', () => {
     await expect(editQueuedPrompt('queue-nope', { prompt: 'x' })).rejects.toThrow();
   });
 
+  it('paused queue preserves the remix base across pause/resume', async () => {
+    const q = await enqueuePaused(
+      { prompt: 'remix', characters: ['Нова'], items: [], location: null },
+      'anime-girl',
+    );
+    expect(q.basedOn).toBe('anime-girl');
+    const lib2 = { ...lib, characters: new Set([...lib.characters, 'Нова']) };
+    const r = await resumeQueuedPrompt(q.id, lib2);
+    if (r.status !== 'ready') throw new Error('expected ready');
+    expect(r.basedOn).toBe('anime-girl');
+  });
+
   it('removed entries disappear', async () => {
     const q = await enqueuePaused({ prompt: 'tmp', characters: [], items: [], location: null });
     await removeQueued(q.id);

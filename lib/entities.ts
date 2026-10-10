@@ -11,6 +11,8 @@ export interface Entity {
   parentId?: string | null;
   locationId?: string | null;
   cast?: { characters: string[]; items: string[] };
+  /** remix source reference id (e.g. 'anime-girl'), null when original */
+  basedOn?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -92,5 +94,6 @@ export async function forkScene(
     parentId: src.id,
     locationId: overrides.locationId !== undefined ? overrides.locationId : src.locationId,
     cast: overrides.cast ?? src.cast,
+    basedOn: src.basedOn ?? null,
   });
 }

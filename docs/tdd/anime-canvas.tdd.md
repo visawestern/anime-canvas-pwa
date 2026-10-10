@@ -93,3 +93,14 @@ User errors fixed:
   Found by check: stale `.next` dev cache 500 on /scenes after prod build — fixed by clean dev restart.
 - Verification: 148/148 tests, `tsc` 0, coverage 91.2% lines / 81.3% branches / 90.5% funcs, `next build` OK,
   all 5 pages serve admin shell (curl-checked markup).
+
+## Session 5 — user-reported bugs: studio theme + silent generation
+1. Studio theme "unchanged": markup DID carry the new theme (curl: section.card x2 + sidebar on /) — stale
+  browser CSS. Added card-class regression guard (CanvasStage.test). Fix for user: hard refresh (Cmd+Shift+R).
+2. "Нарисовать: получено N шагов, но рисунка нет": entity/scene pages never rendered anything — text-only
+  status. Fixed with `EntityPreview` (plays the DrawingScript on its own canvas + replay button), wired into
+  /characters /items /locations (onSaved now passes the script) and SceneComposer (preview after generation).
+  3 preview tests + 1 composer preview test; SceneComposer.test mocks the player (jsdom has no 2d context).
+- Regression test for the exact live step-11 failure (shade strokes o=0.4, no fills): normalize->schema->
+  pipeline passes, no 422.
+- Verification: 154/154 tests, `tsc` 0, coverage 90.4% lines / 81.6% branches / 90.6% funcs, `next build` OK.

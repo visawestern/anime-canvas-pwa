@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+
+vi.mock('@/lib/pencil-renderer', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/lib/pencil-renderer')>();
+  return { ...mod, playScriptOnCanvas: vi.fn(async () => {}) };
+});
+
 import { SceneComposer } from '@/components/SceneComposer';
 import { saveEntity } from '@/lib/entities';
 
@@ -62,6 +68,13 @@ describe('SceneComposer (cast + missing proposals + paused queue)', () => {
     render(<SceneComposer />);
     fireEvent.change(screen.getByLabelText(/шаблон сцены/i), { target: { value: 'scene-duel-bridge' } });
     expect((screen.getByLabelText(/промпт сцены/i) as HTMLTextAreaElement).value).toContain('Кей');
+  });
+
+  it('generated scene plays in the preview canvas (visual proof, not just text)', async () => {
+    render(<SceneComposer />);
+    fireEvent.change(screen.getByLabelText(/промпт сцены/i), { target: { value: 'тихая сцена' } });
+    fireEvent.click(screen.getByRole('button', { name: /собрать сцену/i }));
+    await waitFor(() => expect(screen.getByTestId('entity-preview')).toBeInTheDocument());
   });
 
   it('forks a scene keeping parent link', async () => {

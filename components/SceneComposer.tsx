@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
+import { DrawingScriptSchema, type DrawingScript } from '@/lib/drawing-script-schema';
+import { EntityPreview } from '@/components/EntityPreview';
 import {
   listEntities,
   findEntityByName,
@@ -43,6 +44,7 @@ export function SceneComposer() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [pendingParent, setPendingParent] = useState<{ id: string; name: string } | null>(null);
+  const [preview, setPreview] = useState<DrawingScript | null>(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -132,6 +134,7 @@ export function SceneComposer() {
       setStatus('Все на месте. Gemma собирает сцену…');
       const scene = await generateScene(req, undefined, pendingParent?.id);
       setPendingParent(null);
+      setPreview(scene.script);
       setStatus(`Сцена готова: ${scene.name}.`);
       await refresh();
     } catch (e) {
@@ -149,6 +152,7 @@ export function SceneComposer() {
         setMissing(null);
         setStatus('Состав полный. Gemma собирает сцену…');
         const scene = await generateScene(result.request, id);
+        setPreview(scene.script);
         setStatus(`Сцена готова: ${scene.name}.`);
       } else {
         setMissing(result.missing);
@@ -216,6 +220,7 @@ export function SceneComposer() {
         Собрать сцену
       </button>
       <p className="status">{status}</p>
+      <EntityPreview script={preview} />
 
       {missing && (missing.characters.length > 0 || missing.items.length > 0 || missing.location) && (
         <div data-testid="missing-dialog" role="dialog" aria-label="Нужно дорисовать" className="dialog">

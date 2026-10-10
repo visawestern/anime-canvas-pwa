@@ -10,4 +10,9 @@ describe('CanvasStage (one canvas invariant)', () => {
     expect(screen.getByLabelText(/загрузить фото/i)).toBeInTheDocument();
     expect(screen.getByTestId('stage-status')).toBeInTheDocument();
   });
+
+  it('uses the admin card theme like other pages (no unstyled section)', () => {
+    const { container } = render(<CanvasStage />);
+    expect(container.querySelector('section.card')).toBeInTheDocument();
+  });
 });

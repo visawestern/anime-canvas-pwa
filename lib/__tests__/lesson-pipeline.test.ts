@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { gradeOfStroke } from '@/lib/lesson-knowledge';
+import { normalizeScript } from '@/lib/script-normalize';
 import { validatePipeline, validateSceneLayers } from '@/lib/lesson-pipeline';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
+import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 
 const good = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
@@ -92,8 +94,7 @@ describe('validatePipeline (lessons as system gate)', () => {
   });
 });
 
-describe('validateSceneLayers (every actor gets a layer)', () => {
-  const scene = { ...good, layers: ['backdrop', 'actor_Нова', 'ink', 'fill', 'shade'] } as unknown as DrawingScript;
+describe('validateSceneLayers (every actor gets a layer)', () => {  const scene = { ...good, layers: ['backdrop', 'actor_Нова', 'ink', 'fill', 'shade'] } as unknown as DrawingScript;
 
   it('passes when each cast member has an actor layer', () => {
     expect(validateSceneLayers(scene, ['Нова'])).toEqual([]);
@@ -110,5 +111,32 @@ describe('validateSceneLayers (every actor gets a layer)', () => {
   it('matches transliterated actor layers (live actor_aya case)', () => {
     const latin = { ...good, layers: ['backdrop', 'actor_aya', 'actor_kei', 'ink'] } as unknown as DrawingScript;
     expect(validateSceneLayers(latin, ['Ая', 'Кей'])).toEqual([]);
+  });
+});
+
+describe('live regression: user step-11 failure (shade strokes o=0.4, no fills)', () => {
+  it('normalize snaps + schema parses + pipeline passes (no more 422)', () => {
+    const raw = {
+      style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+      layers: ['construction', 'ink', 'shade'],
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'construction', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
+        { id: 2, kind: 'ink', layer: 'ink', strokes: [{ path: 'M0 0 L10 10', w: 2.4, o: 1 }] },
+        {
+          id: 11,
+          kind: 'shade',
+          layer: 'shade',
+          strokes: [
+            { path: 'M0 0 L10 10', w: 1.2, o: 0.4 },
+            { path: 'M5 0 L15 10', w: 1.6, o: 0.5 },
+          ],
+        },
+      ],
+      rig: { bones: [], morphTargets: [] },
+      anim: { fps: 12, loop: 'idle', dirtyLayers: [] },
+    };
+    const { script } = normalizeScript(raw);
+    const parsed = DrawingScriptSchema.parse(script);
+    expect(validatePipeline(parsed)).toEqual([]);
   });
 });

@@ -1,13 +1,13 @@
 'use client';
 import { useState } from 'react';
-import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
+import { DrawingScriptSchema, type DrawingScript } from '@/lib/drawing-script-schema';
 import { saveEntity, type EntityKind } from '@/lib/entities';
 import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 
 export interface EntityGeneratorProps {
   kind: EntityKind;
   title: string;
-  onSaved?: () => void;
+  onSaved?: (script: DrawingScript) => void;
 }
 
 /** New character/item/location from a text prompt: generate -> validate -> save to library. */
@@ -44,7 +44,7 @@ export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) 
       const script = DrawingScriptSchema.parse(data);
       await saveEntity({ kind, name: name.trim(), script });
       setStatus(`Сохранено в библиотеку: ${name.trim()}.`);
-      onSaved?.();
+      onSaved?.(script);
     } catch (e) {
       setStatus(`Ошибка: ${(e as Error).message}`);
     } finally {

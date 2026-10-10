@@ -10,6 +10,7 @@ import {
   type Entity,
 } from '@/lib/entities';
 import { validateSceneLayers } from '@/lib/lesson-pipeline';
+import { auditCraft } from '@/lib/svg-craft';
 import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 import {
   resolveCast,
@@ -135,7 +136,7 @@ export function SceneComposer() {
       const scene = await generateScene(req, undefined, pendingParent?.id);
       setPendingParent(null);
       setPreview(scene.script);
-      setStatus(`Сцена готова: ${scene.name}.`);
+      setStatus(`Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.`);
       await refresh();
     } catch (e) {
       setStatus(`Ошибка: ${(e as Error).message}`);
@@ -153,7 +154,7 @@ export function SceneComposer() {
         setStatus('Состав полный. Gemma собирает сцену…');
         const scene = await generateScene(result.request, id);
         setPreview(scene.script);
-        setStatus(`Сцена готова: ${scene.name}.`);
+        setStatus(`Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.`);
       } else {
         setMissing(result.missing);
         setStatus('Всё ещё не хватает — дорисуй и нажми «Продолжить».');

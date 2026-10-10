@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { DrawingScriptSchema, type DrawingScript } from '@/lib/drawing-script-schema';
+import { auditCraft } from '@/lib/svg-craft';
 import { saveEntity, type EntityKind } from '@/lib/entities';
 import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 
@@ -43,7 +44,8 @@ export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) 
       if (!res.ok) throw new Error(data.error ?? 'generation failed');
       const script = DrawingScriptSchema.parse(data);
       await saveEntity({ kind, name: name.trim(), script });
-      setStatus(`Сохранено в библиотеку: ${name.trim()}.`);
+      const audit = auditCraft(script);
+      setStatus(`Сохранено в библиотеку: ${name.trim()}. Качество линий: ${audit.score}/100.`);
       onSaved?.(script);
     } catch (e) {
       setStatus(`Ошибка: ${(e as Error).message}`);

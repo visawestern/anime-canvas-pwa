@@ -1,5 +1,6 @@
 /** System prompt: art-director grounded in drawing lessons (risunci/purmix/bogema/coddy). Model outputs DrawingScript JSON only. */
 import { lessonBlock, exampleBlock } from './lesson-knowledge';
+import { svgCraftBlock } from './svg-craft';
 
 const PHOTO_BODY = `Construction order (from risunci.com lessons, mandatory):
 1. construction: pose axis — collar line, spine, shoulders, hips, knees, feet to capture pose/movement.
@@ -26,5 +27,7 @@ export const ANIME_DIRECTOR_PROMPT = `You are an anime art-director. Analyze the
 ${PHOTO_BODY}
 
 ${lessonBlock()}
+
+${svgCraftBlock()}
 
 ${exampleBlock()}`;

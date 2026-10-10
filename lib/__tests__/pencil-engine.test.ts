@@ -6,6 +6,10 @@ describe('pencil-engine', () => {
     expect(FRAME_12FPS_MS).toBeCloseTo(1000 / 12, 5);
   });
 
+  it('empty polyline stays empty (no crash on degenerate stroke)', () => {
+    expect(interpolateStroke([], 0.5)).toEqual([]);
+  });
+
   it('interpolates stroke points by progress 0..1', () => {
     const pts = [
       [0, 0],

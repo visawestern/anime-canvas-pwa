@@ -14,7 +14,8 @@ export function interpolateStroke(points: Point[], progress: number): Point[] {
   const full = Math.floor(scaled);
   const frac = scaled - full;
   const out = points.slice(0, full + 1);
-  if (frac > 0 && full + 1 < points.length) {
+  // full+1 < length always holds here (p<1 strict), so frac alone decides
+  if (frac > 0) {
     const [x0, y0] = points[full];
     const [x1, y1] = points[full + 1];
     out.push([x0 + (x1 - x0) * frac, y0 + (y1 - y0) * frac]);

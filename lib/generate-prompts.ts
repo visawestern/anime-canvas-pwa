@@ -1,5 +1,6 @@
 /** Kind-specific director briefs: text prompt -> DrawingScript JSON. Grounded in risunci lessons. */
 import { lessonBlock, exampleBlock } from './lesson-knowledge';
+import { svgCraftBlock } from './svg-craft';
 
 export type GenerateKind = 'character' | 'item' | 'location' | 'scene';
 
@@ -8,6 +9,8 @@ Schema: style {palette, linePencil, lineInk}, layers [strings], steps (non-empty
 Strokes use SVG path data (absolute M/L/C/Z) in a 0..512 viewBox. Construction order: pose axis -> skeleton -> masses -> details -> ink -> eraser -> fill -> cel shade.
 
 ${lessonBlock()}
+
+${svgCraftBlock()}
 
 ${exampleBlock()}`;
 

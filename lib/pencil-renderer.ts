@@ -1,6 +1,7 @@
 import type { Point } from './pencil-engine';
 import { applyJitter } from './pencil-engine';
 import { gradeOfStroke } from './lesson-knowledge';
+import { simplifyPath } from './path-surgery';
 
 const KNOWN = /^[MLHVCSQTAZ]$/i;
 
@@ -242,6 +243,140 @@ function tracePath(ctx: CanvasRenderingContext2D, pts: Point[]) {
 
 function frame(): Promise<void> {
   return new Promise((r) => requestAnimationFrame(() => r()));
+}
+
+export interface StaticOpts {
+  onSkip?: (info: { stepId: number; path: string; error: string }) => void;
+  /** Ramer–Douglas–Peucker tolerance: drop wobble anchors before drawing (thumbnails). */
+  simplify?: number;
+}
+
+/**
+ * Instant synchronous render of a script (thumbnails, previews of saved art).
+ * Same drawing semantics as the film, no animation. Returns skipped-stroke count.
+ */
+export function renderScriptStatic(
+  canvas: HTMLCanvasElement,
+  steps: PlayStep[],
+  opts: StaticOpts = {},
+): { skipped: number } {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2d context unavailable');
+  let skipped = 0;
+  const skip = (stepId: number, path: string, e: unknown) => {
+    skipped++;
+    opts.onSkip?.({ stepId, path, error: (e as Error).message });
+  };
+  const clean = (pts: Point[], stepId: number, path: string): Point[] | null => {
+    const out = opts.simplify ? simplifyPath(pts, opts.simplify) : pts;
+    if (out.length < 2) {
+      skip(stepId, path, new Error('degenerate polyline (<2 points)'));
+      return null;
+    }
+    return out;
+  };
+  ctx.save();
+  ctx.fillStyle = '#f7f2e8';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  const drawStroke = (pts: Point[], width: number, style: string, alpha: number) => {
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width;
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  };
+
+  const ordered = [...steps].sort((a, b) => a.id - b.id);
+  for (const step of ordered) {
+    if (step.kind === 'pencil' || step.kind === 'ink') {
+      ctx.save();
+      for (const s of step.strokes ?? []) {
+        let raw: Point[] | null = null;
+        try {
+          raw = clean(svgPathToPoints(s.path), step.id, s.path);
+        } catch (e) {
+          skip(step.id, s.path, e);
+          continue;
+        }
+        if (!raw) continue;
+        const pts = applyJitter(raw, 0.6);
+        drawStroke(
+          pts,
+          (s.w ?? (step.kind === 'pencil' ? 1.2 : 2.2)) * (512 / canvas.width),
+          strokeStyleFor(step.kind, { w: s.w, o: s.o }),
+          step.kind === 'pencil' ? 1 : (s.o ?? 1),
+        );
+      }
+      ctx.restore();
+    } else if (step.kind === 'eraser') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineCap = 'round';
+      for (const s of step.strokes ?? []) {
+        let pts: Point[] | null = null;
+        try {
+          pts = clean(svgPathToPoints(s.path), step.id, s.path);
+        } catch (e) {
+          skip(step.id, s.path, e);
+          continue;
+        }
+        if (!pts) continue;
+        ctx.lineWidth = 10;
+        tracePath(ctx, pts);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#f7f2e8';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.globalAlpha = step.kind === 'shade' ? 0.35 : 1;
+      for (const f of step.fills ?? []) {
+        let pts: Point[] | null = null;
+        try {
+          pts = clean(svgPathToPoints(f.path), step.id, f.path);
+        } catch (e) {
+          skip(step.id, f.path, e);
+          continue;
+        }
+        if (!pts) continue;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = f.color;
+        ctx.fill();
+      }
+      for (const s of step.strokes ?? []) {
+        let raw: Point[] | null = null;
+        try {
+          raw = clean(svgPathToPoints(s.path), step.id, s.path);
+        } catch (e) {
+          skip(step.id, s.path, e);
+          continue;
+        }
+        if (!raw) continue;
+        const pts = applyJitter(raw, 0.3);
+        drawStroke(
+          pts,
+          (s.w ?? 1.6) * (512 / canvas.width),
+          strokeStyleFor('pencil', { w: s.w, o: s.o }),
+          step.kind === 'shade' ? 0.55 : 1,
+        );
+      }
+      ctx.restore();
+    }
+  }
+  return { skipped };
 }
 
 /** Parse one path; on failure report via onSkip and let the film continue. */

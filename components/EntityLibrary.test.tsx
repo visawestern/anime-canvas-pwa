@@ -21,4 +21,18 @@ describe('EntityLibrary', () => {
     await waitFor(() => expect(screen.queryByText(/Библио-Герой/)).not.toBeInTheDocument());
     expect(onChange).toHaveBeenCalled();
   });
+
+  it('shows an avatar per row and opens saved art in a dialog on click', async () => {
+    const e = await saveEntity({ kind: 'item', name: 'Аватар-Меч', script });
+    render(<EntityLibrary kind="item" />);
+    await waitFor(() => expect(screen.getByText(/Аватар-Меч/)).toBeInTheDocument());
+    expect(screen.getAllByTestId('entity-thumb')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /открыть/i }));
+    const dlg = await screen.findByRole('dialog');
+    expect(dlg).toHaveTextContent('Аватар-Меч');
+    expect(dlg.querySelector('canvas')).toBeInTheDocument();
+    expect(e.script.steps).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /закрыть/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

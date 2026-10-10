@@ -146,3 +146,13 @@ until a number landed in command slot. Duplicate "Рин" entries came from re-c
   SceneComposer "Изменить эталон по промпту": brief prepended to generation, scenes marked basedOn,
   base survives queue pause/resume. Entity.basedOn added, forkScene preserves it.
 - Verification: 191/191 tests, `tsc` 0, coverage 89.8% lines / 80.5% branches / 90.4% funcs, build OK.
+
+## Session 9 — dev console errors (hot-update blocked + full-reload warning)
+User pasted Safari console: `hot-update.json ... access control checks` + Fast Refresh full-reload hint.
+- Export audit: NO mixed component/value exports, NO class components in the codebase — the reload
+  warning is fallout from the blocked HMR fetch, not our structure.
+- SW v4: bypasses `.hot-update.*` and non-GET requests (dev HMR never intercepted); precache list intact.
+- SwRegister is now production-only; in dev it unregisters stale workers on load, so the stuck v1/v3
+  worker that served the old shell removes itself on next visit. 3 SwRegister tests + 1 shell test.
+- Verification: 194/194 tests, `tsc` 0, coverage 89.8%/80.6%/90.4%, build OK. User must restart dev
+  server once (`npm run dev -- -p 3000`) — then HMR works and the stale worker is gone.

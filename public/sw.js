@@ -1,5 +1,5 @@
-/* AnimeCanvas PWA service worker v3: all pages precached upfront, pages update from network. */
-const CACHE = 'animecanvas-v3';
+/* AnimeCanvas PWA service worker v4: all pages precached upfront, pages update from network. */
+const CACHE = 'animecanvas-v4';
 const SHELL = [
   '/',
   '/characters',
@@ -27,6 +27,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return; // never cache Ollama proxy
+  if (event.request.method !== 'GET') return; // only cache reads
+  if (url.pathname.includes('.hot-update.')) return; // never touch dev HMR traffic
   if (event.request.mode === 'navigate') {
     // pages: fresh HTML first, cache only as offline fallback
     event.respondWith(

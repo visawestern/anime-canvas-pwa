@@ -23,6 +23,12 @@ describe('PWA shell', () => {
     }
   });
 
+  it('sw.js never touches HMR traffic or non-GET requests (dev stays live)', () => {
+    const sw = fs.readFileSync(path.resolve(__dirname, '../../public/sw.js'), 'utf8');
+    expect(sw).toMatch(/hot-update/);
+    expect(sw).toMatch(/GET/);
+  });
+
   it('manifest is installable (name, icons, standalone)', () => {
     const m = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../public/manifest.webmanifest'), 'utf8'));
     expect(m.name).toBeTruthy();

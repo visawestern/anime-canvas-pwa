@@ -49,4 +49,11 @@ describe('EntityGenerator (new character/item/location by prompt)', () => {
     await waitFor(() => expect(screen.getByText(/down/i)).toBeInTheDocument());
     expect(saveEntity).not.toHaveBeenCalled();
   });
+
+  it('template picker fills prompt and suggests a name', async () => {
+    render(<EntityGenerator kind="character" title="Новый персонаж" onSaved={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/шаблон/i), { target: { value: 'character-shojo-heroine' } });
+    expect((screen.getByLabelText(/промпт/i) as HTMLTextAreaElement).value).toContain('волшебница');
+    expect((screen.getByLabelText(/имя/i) as HTMLInputElement).value).toBe('Ая');
+  });
 });

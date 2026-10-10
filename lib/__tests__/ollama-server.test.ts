@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requestDrawingScript } from '@/lib/ollama-server';
 const validScript = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
-  layers: ['construction', 'ink'],
-  steps: [{ id: 1, kind: 'pencil', layer: 'construction', strokes: [{ path: 'M0 0 L10 10' }] }],
+  layers: ['construction', 'ink', 'fill'],
+  steps: [
+    { id: 1, kind: 'pencil', layer: 'construction', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
+    { id: 2, kind: 'ink', layer: 'ink', strokes: [{ path: 'M0 0 L10 10', w: 2.4, o: 1 }] },
+    { id: 3, kind: 'fill', layer: 'fill', fills: [{ path: 'M0 0 L10 0 L10 10 Z', color: '#fff' }] },
+  ],
   rig: { bones: [], morphTargets: [] },
   anim: { fps: 12, loop: 'x', dirtyLayers: [] },
 };
@@ -20,7 +24,7 @@ describe('requestDrawingScript (server)', () => {
     );
     const script = await requestDrawingScript({ imageBase64: 'AAA' });
     expect(script.anim.fps).toBe(12);
-    expect(script.steps).toHaveLength(1);
+    expect(script.steps).toHaveLength(3);
   });
 
   it('throws honest error on HTTP failure (no fake script)', async () => {
@@ -86,6 +90,16 @@ describe('requestDrawingScript repair-retry', () => {
     };
     expect(secondBody.messages.length).toBeGreaterThan(1);
     expect(secondBody.messages.map((m) => m.content).join('\n')).toMatch(/fix|error|issue|исправь/i);
+  });
+
+  it('repairs pipeline violations inside the retry loop (no-ink first)', async () => {
+    const noInk = { ...fullValid, steps: [fullValid.steps[0], fullValid.steps[2]] };
+    const fetchMock = vi.fn(async (..._args: unknown[]) => chatWith(JSON.stringify(fullValid)));
+    fetchMock.mockResolvedValueOnce(chatWith(JSON.stringify(noInk)));
+    vi.stubGlobal('fetch', fetchMock as never);
+    const script = await requestDrawingScript({ imageBase64: 'AAA' });
+    expect(script.steps).toHaveLength(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('throws a bounded summary after exhausting tries (no 70-issue dump)', async () => {

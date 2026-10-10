@@ -7,10 +7,12 @@ export default function CharactersPage() {
   const [nonce, setNonce] = useState(0);
   return (
     <main>
-      <h1>Персонажи</h1>
+      <h1 className="page-title">Персонажи</h1>
       <EntityGenerator kind="character" title="Новый персонаж" onSaved={() => setNonce((n) => n + 1)} />
       <h2>Библиотека</h2>
-      <EntityLibrary key={nonce} kind="character" />
+      <div className="card">
+        <EntityLibrary key={nonce} kind="character" />
+      </div>
     </main>
   );
 }

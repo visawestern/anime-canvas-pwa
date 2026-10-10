@@ -151,9 +151,11 @@ export function CanvasStage() {
   }
 
   return (
-    <section>
+    <section className="card" aria-label="Холст">
+      <h2 className="page-title">Студия</h2>
+      <p className="page-sub">Загрузи фото — Gemma разберёт позу, Canvas нарисует аниме штрих за штрихом.</p>
       <canvas ref={canvasRef} width={512} height={512} data-testid="anime-canvas" aria-label="Аниме-холст" />
-      <div>
+      <div className="btn-row">
         <input
           type="file"
           accept="image/*"
@@ -161,15 +163,15 @@ export function CanvasStage() {
           disabled={busy}
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
         />
-        <button type="button" onClick={onAnimate} disabled={animating || steps.length === 0}>
+        <button type="button" className="btn-primary" onClick={onAnimate} disabled={animating || steps.length === 0}>
           Анимировать (только движущиеся слои)
         </button>
         <button type="button" onClick={stopAll}>
           Стоп
         </button>
       </div>
-      <p data-testid="stage-status">{status}</p>
-      <ol>
+      <p data-testid="stage-status" className="status">{status}</p>
+      <ol className="list">
         {steps.map((s, i) => (
           <li key={i}>{s}</li>
         ))}

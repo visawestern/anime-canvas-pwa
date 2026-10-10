@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { SwRegister } from '@/components/SwRegister';
+import { SideNav } from '@/components/SideNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,14 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body>
         <SwRegister />
-        <nav aria-label="Разделы" style={{ display: 'flex', gap: 12, padding: '12px 24px' }}>
-          <a href="/">Студия</a>
-          <a href="/characters">Персонажи</a>
-          <a href="/items">Предметы</a>
-          <a href="/locations">Места</a>
-          <a href="/scenes">Сцены</a>
-        </nav>
-        {children}
+        <div className="admin-shell">
+          <SideNav />
+          <div className="main-col">
+            <div className="topbar">AnimeCanvas — живой карандаш</div>
+            <div className="content">{children}</div>
+          </div>
+        </div>
       </body>
     </html>
   );

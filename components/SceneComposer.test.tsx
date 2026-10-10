@@ -58,6 +58,12 @@ describe('SceneComposer (cast + missing proposals + paused queue)', () => {
     expect(body.prompt).toContain('Нова');
   });
 
+  it('scene template picker fills the prompt field', async () => {
+    render(<SceneComposer />);
+    fireEvent.change(screen.getByLabelText(/шаблон сцены/i), { target: { value: 'scene-duel-bridge' } });
+    expect((screen.getByLabelText(/промпт сцены/i) as HTMLTextAreaElement).value).toContain('Кей');
+  });
+
   it('forks a scene keeping parent link', async () => {
     const s = await saveEntity({ kind: 'scene', name: 'Исходная', script: script as never });
     render(<SceneComposer />);

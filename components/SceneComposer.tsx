@@ -9,6 +9,7 @@ import {
   type Entity,
 } from '@/lib/entities';
 import { validateSceneLayers } from '@/lib/lesson-pipeline';
+import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 import {
   resolveCast,
   isComplete,
@@ -174,8 +175,26 @@ export function SceneComposer() {
   }
 
   return (
-    <section aria-label="Композитор сцен">
+    <section aria-label="Композитор сцен" className="card">
       <h2>Новая сцена</h2>
+      <label>
+        Шаблон сцены
+        <select
+          aria-label="Шаблон сцены"
+          defaultValue=""
+          onChange={(e) => {
+            const t = getTemplate(e.target.value);
+            if (t) setPrompt(t.prompt);
+          }}
+        >
+          <option value="">Свой промпт…</option>
+          {templatesFor('scene').map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.title}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Промпт сцены
         <textarea aria-label="Промпт сцены" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
@@ -193,13 +212,13 @@ export function SceneComposer() {
         <input aria-label="Место" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} />
       </label>
       {pendingParent && <p>Новая версия сцены «{pendingParent.name}» (parent сохранится).</p>}
-      <button type="button" onClick={onCompose} disabled={busy}>
+      <button type="button" className="btn-primary" onClick={onCompose} disabled={busy}>
         Собрать сцену
       </button>
-      <p>{status}</p>
+      <p className="status">{status}</p>
 
       {missing && (missing.characters.length > 0 || missing.items.length > 0 || missing.location) && (
-        <div data-testid="missing-dialog" role="dialog" aria-label="Нужно дорисовать">
+        <div data-testid="missing-dialog" role="dialog" aria-label="Нужно дорисовать" className="dialog">
           <h3>Нужно дорисовать</h3>
           {missing.characters.length > 0 && (
             <p>
@@ -216,9 +235,9 @@ export function SceneComposer() {
       )}
 
       {queue.length > 0 && (
-        <div>
+        <div className="card">
           <h3>Очередь (на паузе)</h3>
-          <ul>
+          <ul className="list">
             {queue.map((q) => (
               <li key={q.id}>
                 <span>
@@ -245,9 +264,9 @@ export function SceneComposer() {
       )}
 
       {scenes.length > 0 && (
-        <div>
+        <div className="card">
           <h3>Сцены</h3>
-          <ul>
+          <ul className="list">
             {scenes.map((s) => (
               <li key={s.id}>
                 <span>

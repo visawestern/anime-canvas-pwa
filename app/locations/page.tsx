@@ -7,10 +7,12 @@ export default function LocationsPage() {
   const [nonce, setNonce] = useState(0);
   return (
     <main>
-      <h1>Места действия</h1>
+      <h1 className="page-title">Места действия</h1>
       <EntityGenerator kind="location" title="Новое место" onSaved={() => setNonce((n) => n + 1)} />
       <h2>Библиотека</h2>
-      <EntityLibrary key={nonce} kind="location" />
+      <div className="card">
+        <EntityLibrary key={nonce} kind="location" />
+      </div>
     </main>
   );
 }

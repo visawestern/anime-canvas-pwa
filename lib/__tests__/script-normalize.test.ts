@@ -72,4 +72,39 @@ describe('normalizeScript (model drift -> canonical DrawingScript)', () => {
     expect(() => normalizeScript('just text')).toThrow();
     expect(() => normalizeScript([1, 2])).toThrow();
   });
+
+  it('snaps near-miss w/o into grade bands with a warning (live o=0.4 case)', () => {
+    const { script, warnings } = normalizeScript({
+      style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+      layers: ['a', 'shade'],
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L1 1', w: 1.2, o: 0.4 }] },
+        { id: 2, kind: 'ink', layer: 'a', strokes: [{ path: 'M0 0 L1 1', w: 2.4, o: 1 }] },
+        { id: 11, kind: 'shade', layer: 'shade', strokes: [{ path: 'M0 0 L1 1', w: 1.6, o: 0.5 }] },
+      ],
+      rig: { bones: [], morphTargets: [] },
+      anim: { fps: 12, loop: 'x', dirtyLayers: [] },
+    });
+    const steps = (script as Record<string, unknown>).steps as Record<string, unknown>[];
+    const s0 = (steps[0].strokes as Record<string, unknown>[])[0];
+    expect(s0.o).toBeGreaterThanOrEqual(0.45);
+    expect(warnings.join(' ')).toMatch(/snap/i);
+  });
+
+  it('applies lesson defaults for missing w/o (pencil->HB, ink->B6) with warnings', () => {
+    const { script, warnings } = normalizeScript({
+      style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+      layers: ['a'],
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L1 1' }] },
+        { id: 2, kind: 'ink', layer: 'a', strokes: [{ path: 'M0 0 L1 1' }] },
+      ],
+      rig: { bones: [], morphTargets: [] },
+      anim: { fps: 12, loop: 'x', dirtyLayers: [] },
+    });
+    const steps = (script as Record<string, unknown>).steps as Record<string, unknown>[];
+    expect((steps[0].strokes as Record<string, unknown>[])[0]).toMatchObject({ w: 1.2, o: 0.5 });
+    expect((steps[1].strokes as Record<string, unknown>[])[0]).toMatchObject({ w: 2.4, o: 1 });
+    expect(warnings.join(' ')).toMatch(/default/i);
+  });
 });

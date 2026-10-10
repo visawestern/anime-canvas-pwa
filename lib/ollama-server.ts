@@ -4,7 +4,7 @@ import { buildKindPrompt, type GenerateKind } from './generate-prompts';
 import { DrawingScriptSchema, type DrawingScript } from './drawing-script-schema';
 import { ANIME_DIRECTOR_PROMPT } from './anime-director-prompt';
 import { normalizeScript } from './script-normalize';
-import { summarizeIssues } from './lesson-pipeline';
+import { summarizeIssues, validatePipeline } from './lesson-pipeline';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud';
@@ -32,7 +32,12 @@ async function postChat(model: string, messages: ChatMessage[]): Promise<string>
  * Every repair asks for JSON ONLY plus the concrete error list; persistent failure
  * throws a bounded summary (never the full 70-issue dump).
  */
-async function requestWithRepair(label: string, model: string, initial: ChatMessage[]): Promise<DrawingScript> {
+async function requestWithRepair(
+  label: string,
+  model: string,
+  initial: ChatMessage[],
+  validate: (s: DrawingScript) => string[] = () => [],
+): Promise<DrawingScript> {
   const messages = [...initial];
   let lastErr = 'unknown error';
   for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
@@ -41,7 +46,14 @@ async function requestWithRepair(label: string, model: string, initial: ChatMess
       const raw = parseModelJson(content);
       const { script, warnings } = normalizeScript(raw);
       for (const w of warnings) console.warn(`[${label}] normalize: ${w}`);
-      return DrawingScriptSchema.parse(script);
+      const parsed = DrawingScriptSchema.parse(script);
+      const violations = validate(parsed);
+      if (violations.length > 0) {
+        const shown = violations.slice(0, 5).join('; ');
+        const more = violations.length > 5 ? ` ... and ${violations.length - 5} more` : '';
+        throw new Error(`lesson pipeline violated: ${shown}${more}`);
+      }
+      return parsed;
     } catch (e) {
       lastErr = e instanceof ZodError ? `schema: ${summarizeIssues(e.issues)}` : (e as Error).message;
       messages.push(
@@ -66,7 +78,7 @@ export async function requestDrawingScriptFromPrompt(args: {
     prompt: buildKindPrompt(args.kind, args.prompt),
     model: args.model || OLLAMA_MODEL,
   });
-  return requestWithRepair(`generate:${args.kind}`, body.model, body.messages);
+  return requestWithRepair(`generate:${args.kind}`, body.model, body.messages, validatePipeline);
 }
 
 /** Server-only: sends image to Gemma vision, validates DrawingScript JSON. Never fakes pixels. */
@@ -80,5 +92,5 @@ export async function requestDrawingScript(args: {
     prompt: `${ANIME_DIRECTOR_PROMPT}\n\nUser task: ${args.prompt || 'Analyze the photo and produce a DrawingScript to redraw it as anime on canvas.'}`,
     model: args.model || OLLAMA_MODEL,
   });
-  return requestWithRepair('draw:photo', body.model, body.messages);
+  return requestWithRepair('draw:photo', body.model, body.messages, validatePipeline);
 }

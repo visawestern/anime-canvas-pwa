@@ -54,4 +54,12 @@ describe('playScriptOnCanvas (single-canvas film)', () => {
     const bad = { width: 1, height: 1, getContext: () => null } as unknown as HTMLCanvasElement;
     await expect(playScriptOnCanvas(bad, [])).rejects.toThrow();
   });
+
+  it('renders hatching strokes of shade steps (purmix shadowing draws!)', async () => {
+    const canvas = stubCanvas();
+    await playScriptOnCanvas(canvas, [
+      { id: 11, kind: 'shade', layer: 'shade', strokes: [{ path: 'M0 0 L20 20', w: 1.6, o: 0.7 }] },
+    ]);
+    expect(canvas.__ctx.stroke).toHaveBeenCalled();
+  });
 });

@@ -148,6 +148,39 @@ export function gradeOfStroke(s: { w?: number; o?: number }): PencilGrade | unde
   return PENCIL_GRADES.find((g) => w >= g.w[0] && w <= g.w[1] && o >= g.o[0] && o <= g.o[1]);
 }
 
+const W_TOL = 0.3;
+const O_TOL = 0.15;
+
+export interface SnappedStroke {
+  w: number;
+  o: number;
+  grade: PencilGrade['grade'];
+  snapped: boolean;
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+/**
+ * Snap near-miss w/o into the nearest grade band (live o=0.4 case).
+ * Exact bands pass through untouched; garbage far from every band stays undefined.
+ */
+export function snapStrokeToGrade(w: number, o: number): SnappedStroke | undefined {
+  const exact = gradeOfStroke({ w, o });
+  if (exact) return { w, o, grade: exact.grade, snapped: false };
+  let best: { g: PencilGrade; dw: number; do: number } | undefined;
+  for (const g of PENCIL_GRADES) {
+    const dw = w < g.w[0] ? g.w[0] - w : w > g.w[1] ? w - g.w[1] : 0;
+    const doff = o < g.o[0] ? g.o[0] - o : o > g.o[1] ? o - g.o[1] : 0;
+    if (dw <= W_TOL && doff <= O_TOL && (!best || dw + doff < best.dw + best.do)) {
+      best = { g, dw, do: doff };
+    }
+  }
+  if (!best) return undefined;
+  return { w: clamp(w, best.g.w[0], best.g.w[1]), o: clamp(o, best.g.o[0], best.g.o[1]), grade: best.g.grade, snapped: true };
+}
+
 /**
  * Fenced minimal example the model must copy EXACTLY (key names and shapes).
  * Self-checked by test: the embedded JSON validates against DrawingScriptSchema.

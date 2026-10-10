@@ -7,10 +7,12 @@ export default function ItemsPage() {
   const [nonce, setNonce] = useState(0);
   return (
     <main>
-      <h1>Предметы</h1>
+      <h1 className="page-title">Предметы</h1>
       <EntityGenerator kind="item" title="Новый предмет" onSaved={() => setNonce((n) => n + 1)} />
       <h2>Библиотека</h2>
-      <EntityLibrary key={nonce} kind="item" />
+      <div className="card">
+        <EntityLibrary key={nonce} kind="item" />
+      </div>
     </main>
   );
 }

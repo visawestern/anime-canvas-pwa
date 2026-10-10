@@ -1,3 +1,5 @@
+import { snapStrokeToGrade } from './lesson-knowledge';
+
 /**
  * Normalizes raw model JSON into canonical DrawingScript shape before schema validation.
  * Handles the drift LLMs actually produce (style objects, d/points aliases, missing ids,
@@ -50,7 +52,12 @@ function pointsToPath(points: unknown): string | undefined {
 
 const STEP_KINDS = ['pencil', 'ink', 'eraser', 'fill', 'shade'];
 
-function normalizeStroke(st: unknown, where: string, warnings: string[]): Record<string, unknown> | null {
+function normalizeStroke(
+  st: unknown,
+  where: string,
+  warnings: string[],
+  kind: string,
+): Record<string, unknown> | null {
   if (!isObj(st)) return null;
   const out: Record<string, unknown> = {};
   const path = asString(st.path) ?? asString(st.d);
@@ -63,8 +70,32 @@ function normalizeStroke(st: unknown, where: string, warnings: string[]): Record
     return null;
   }
   out.path = finalPath;
-  if (typeof st.w === 'number') out.w = st.w;
-  if (typeof st.o === 'number') out.o = st.o;
+  if (kind === 'eraser') {
+    // eraser size is not a pencil mark: pass w/o through untouched, no grade logic
+    if (typeof st.w === 'number') out.w = st.w;
+    if (typeof st.o === 'number') out.o = st.o;
+    return out;
+  }
+  const hasW = typeof st.w === 'number';
+  const hasO = typeof st.o === 'number';
+  if (!hasW || !hasO) {
+    // lesson defaults: construction sketches HB, final contour B6 (purmix)
+    const dflt = kind === 'ink' ? { w: 2.4, o: 1 } : { w: 1.2, o: 0.5 };
+    out.w = hasW ? st.w : dflt.w;
+    out.o = hasO ? st.o : dflt.o;
+    warnings.push(`${where}: w/o defaulted to ${kind === 'ink' ? 'B6' : 'HB'} (${out.w}/${out.o})`);
+    return out;
+  }
+  const snapped = snapStrokeToGrade(st.w as number, st.o as number);
+  if (!snapped) {
+    warnings.push(`${where}: w/o outside every pencil grade even with tolerance (kept for pipeline gate)`);
+    out.w = st.w;
+    out.o = st.o;
+    return out;
+  }
+  out.w = snapped.w;
+  out.o = snapped.o;
+  if (snapped.snapped) warnings.push(`${where}: w/o snapped to ${snapped.grade} band`);
   return out;
 }
 
@@ -89,7 +120,7 @@ function normalizeStep(s: unknown, index: number, warnings: string[]): unknown {
   }
   if (Array.isArray(s.strokes)) {
     out.strokes = s.strokes
-      .map((st, i) => normalizeStroke(st, `${where}.strokes[${i}]`, warnings))
+      .map((st, i) => normalizeStroke(st, `${where}.strokes[${i}]`, warnings, typeof out.kind === 'string' ? out.kind : 'pencil'))
       .filter((x): x is Record<string, unknown> => x !== null);
   }
   if (Array.isArray(s.fills)) {

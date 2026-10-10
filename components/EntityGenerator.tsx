@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 import { saveEntity, type EntityKind } from '@/lib/entities';
-import type { GenerateKind } from '@/lib/generate-prompts';
+import { templatesFor, getTemplate } from '@/lib/prompt-templates';
 
 export interface EntityGeneratorProps {
   kind: EntityKind;
@@ -16,6 +16,15 @@ export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) 
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const templates = templatesFor(kind);
+
+  function onTemplate(id: string) {
+    const t = getTemplate(id);
+    if (!t) return;
+    setPrompt(t.prompt);
+    if (!name.trim()) setName(t.exampleName);
+    setStatus(`Шаблон: ${t.title}. ${t.hints.join(' · ')}`);
+  }
 
   async function onGenerate() {
     if (!name.trim() || !prompt.trim()) {
@@ -44,8 +53,19 @@ export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) 
   }
 
   return (
-    <section aria-label={title}>
+    <section aria-label={title} className="card">
       <h2>{title}</h2>
+      <label>
+        Шаблон
+        <select aria-label="Шаблон" defaultValue="" onChange={(e) => onTemplate(e.target.value)}>
+          <option value="">Свой промпт…</option>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.title} — напр. «{t.exampleName}»
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Имя
         <input aria-label="Имя" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ая" />
@@ -54,10 +74,10 @@ export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) 
         Промпт
         <textarea aria-label="Промпт" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="девочка-волшебница с посохом" />
       </label>
-      <button type="button" onClick={onGenerate} disabled={busy}>
+      <button type="button" className="btn-primary" onClick={onGenerate} disabled={busy}>
         Нарисовать
       </button>
-      <p>{status}</p>
+      <p className="status">{status}</p>
     </section>
   );
 }

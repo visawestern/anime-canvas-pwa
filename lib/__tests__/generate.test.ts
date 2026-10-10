@@ -45,8 +45,12 @@ describe('requestDrawingScriptFromPrompt', () => {
   it('returns validated script for text prompt', async () => {
     const script = {
       style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
-      layers: ['a'],
-      steps: [{ id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L5 5' }] }],
+      layers: ['a', 'ink', 'fill'],
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L5 5', w: 1.2, o: 0.5 }] },
+        { id: 2, kind: 'ink', layer: 'ink', strokes: [{ path: 'M0 0 L5 5', w: 2.4, o: 1 }] },
+        { id: 3, kind: 'fill', layer: 'fill', fills: [{ path: 'M0 0 L5 0 L5 5 Z', color: '#fff' }] },
+      ],
       rig: { bones: [], morphTargets: [] },
       anim: { fps: 12, loop: 'x', dirtyLayers: [] },
     };
@@ -55,7 +59,7 @@ describe('requestDrawingScriptFromPrompt', () => {
       vi.fn(async () => ({ ok: true, json: async () => ({ message: { content: JSON.stringify(script) } }) })) as never,
     );
     const out = await requestDrawingScriptFromPrompt({ kind: 'character', prompt: 'герой с мечом' });
-    expect(out.steps).toHaveLength(1);
+    expect(out.steps).toHaveLength(3);
   });
 
   it('throws on empty prompt without calling fetch', async () => {

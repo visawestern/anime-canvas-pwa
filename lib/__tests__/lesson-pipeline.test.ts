@@ -68,6 +68,28 @@ describe('validatePipeline (lessons as system gate)', () => {
     const bad = { ...good, steps: [...good.steps.slice(0, 2), { id: 3, kind: 'fill', layer: 'fill' }] };
     expect(validatePipeline(bad as unknown as DrawingScript).join(' ')).toMatch(/fill/i);
   });
+
+  it('accepts shade step with hatching strokes (purmix live case)', () => {
+    const hatching = {
+      ...good,
+      steps: [
+        ...good.steps.slice(0, 2),
+        { id: 11, kind: 'shade', layer: 'shade', strokes: [{ path: 'M0 0 L10 10', w: 1.6, o: 0.7 }] },
+      ],
+    };
+    expect(validatePipeline(hatching as unknown as DrawingScript)).toEqual([]);
+  });
+
+  it('exempts eraser strokes from grade bands (eraser size is not a pencil mark)', () => {
+    const withEraser = {
+      ...good,
+      steps: [
+        ...good.steps,
+        { id: 4, kind: 'eraser', layer: 'construction', strokes: [{ path: 'M0 0 L5 5', w: 10, o: 1 }] },
+      ],
+    };
+    expect(validatePipeline(withEraser as unknown as DrawingScript)).toEqual([]);
+  });
 });
 
 describe('validateSceneLayers (every actor gets a layer)', () => {
@@ -83,5 +105,10 @@ describe('validateSceneLayers (every actor gets a layer)', () => {
 
   it('empty cast is valid', () => {
     expect(validateSceneLayers(scene, [])).toEqual([]);
+  });
+
+  it('matches transliterated actor layers (live actor_aya case)', () => {
+    const latin = { ...good, layers: ['backdrop', 'actor_aya', 'actor_kei', 'ink'] } as unknown as DrawingScript;
+    expect(validateSceneLayers(latin, ['Ая', 'Кей'])).toEqual([]);
   });
 });

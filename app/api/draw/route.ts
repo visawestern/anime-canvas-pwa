@@ -19,8 +19,10 @@ export async function POST(req: Request): Promise<Response> {
     });
     const violations = validatePipeline(script);
     if (violations.length > 0) {
+      const shown = violations.slice(0, 5).join('; ');
+      const more = violations.length > 5 ? ` ... and ${violations.length - 5} more` : '';
       return Response.json(
-        { error: `lesson pipeline violated: ${violations.join('; ')}`, violations },
+        { error: `lesson pipeline violated: ${shown}${more}`, violations },
         { status: 422 },
       );
     }

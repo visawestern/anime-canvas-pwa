@@ -1,6 +1,6 @@
 import type { DrawingScript } from './drawing-script-schema';
 import type { ZodIssue } from 'zod';
-import { gradeOfStroke } from './lesson-knowledge';
+import { snapStrokeToGrade } from './lesson-knowledge';
 
 /**
  * Lesson pipeline gate: every model-produced DrawingScript must draw like the lessons teach.
@@ -30,15 +30,18 @@ export function validatePipeline(script: DrawingScript): string[] {
     if (s.kind === 'eraser' && (s.strokes ?? []).length > 0 && !drawnLayers.has(s.layer)) {
       violations.push(`eraser over never-drawn layer "${s.layer}"`);
     }
-    for (const st of s.strokes ?? []) {
-      if (!gradeOfStroke({ w: st.w, o: st.o })) {
-        violations.push(
-          `step ${s.id}: stroke w=${st.w ?? 1.5} o=${st.o ?? 1} outside every pencil grade (HB->B6 bands)`,
-        );
+    if (s.kind !== 'eraser') {
+      for (const st of s.strokes ?? []) {
+        // snap-tolerant: near-misses were already snapped by normalize; only garbage fails
+        if (!snapStrokeToGrade(st.w ?? 1.5, st.o ?? 1)) {
+          violations.push(
+            `step ${s.id}: stroke w=${st.w ?? 1.5} o=${st.o ?? 1} outside every pencil grade (HB->B6 bands)`,
+          );
+        }
       }
     }
-    if ((s.kind === 'fill' || s.kind === 'shade') && (s.fills ?? []).length === 0) {
-      violations.push(`step ${s.id}: ${s.kind} without fills draws nothing`);
+    if ((s.kind === 'fill' || s.kind === 'shade') && (s.fills ?? []).length === 0 && (s.strokes ?? []).length === 0) {
+      violations.push(`step ${s.id}: ${s.kind} without fills or strokes draws nothing`);
     }
     if ((s.strokes ?? []).length > 0) drawnLayers.add(s.layer);
   }
@@ -48,7 +51,25 @@ export function validatePipeline(script: DrawingScript): string[] {
 /** Scene cast consistency: every actor must own a layer (prompt demands actor_<name> layers). */
 export function validateSceneLayers(script: DrawingScript, characters: string[]): string[] {
   const layers = script.layers.map((l) => l.toLowerCase());
-  return characters.filter((name) => !layers.some((l) => l.includes(name.toLowerCase())));
+  return characters.filter((name) => {
+    const variants = [name.toLowerCase(), transliterate(name, 'y'), transliterate(name, 'i')];
+    return !variants.some((v) => v && layers.some((l) => l.includes(v)));
+  });
+}
+
+const RU_MAP: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'zh', з: 'z', и: 'i', й: 'y',
+  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
+  х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
+/** Russian->latin for layer matching (live models transliterate actor_Ая to actor_aya). */
+export function transliterate(s: string, jot: 'y' | 'i' = 'y'): string {
+  return s
+    .toLowerCase()
+    .split('')
+    .map((ch) => (ch === 'й' ? jot : (RU_MAP[ch] ?? ch)))
+    .join('');
 }
 
 /** Bounded human summary of schema issues: first 5 + count (never the full dump). */

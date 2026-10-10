@@ -184,6 +184,21 @@ export async function playScriptOnCanvas(
         ctx.fill();
         await frame();
       }
+      // hatching: purmix shades with B-family strokes — they must draw, not vanish
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const s of step.strokes ?? []) {
+        if (opts.signal?.aborted) return;
+        const pts = applyJitter(svgPathToPoints(s.path), 0.3);
+        ctx.strokeStyle = strokeStyleFor('pencil', { w: s.w, o: s.o });
+        ctx.globalAlpha = step.kind === 'shade' ? 0.55 : 1;
+        ctx.lineWidth = (s.w ?? 1.6) * (512 / canvas.width);
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.stroke();
+        await frame();
+      }
       ctx.restore();
     }
   }

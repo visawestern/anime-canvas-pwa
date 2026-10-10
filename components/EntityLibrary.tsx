@@ -21,15 +21,15 @@ export function EntityLibrary({ kind, onChange }: { kind: EntityKind; onChange?:
     onChange?.();
   }
 
-  if (items.length === 0) return <p>Пока пусто — нарисуй первого выше.</p>;
+  if (items.length === 0) return <p className="status">Пока пусто — нарисуй первого выше.</p>;
   return (
-    <ul>
+    <ul className="list">
       {items.map((e) => (
         <li key={e.id}>
           <span>
-            {e.name} ({e.script.steps.length} шагов)
+            {e.name} <span className="badge">{e.script.steps.length} шагов</span>
           </span>{' '}
-          <button type="button" onClick={() => onDelete(e.id)}>
+          <button type="button" className="btn-danger" onClick={() => onDelete(e.id)}>
             Удалить
           </button>
         </li>

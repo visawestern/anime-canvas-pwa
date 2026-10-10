@@ -10,6 +10,7 @@ import {
   PRACTICE,
   lessonBlock,
   exampleBlock,
+  snapStrokeToGrade,
 } from '@/lib/lesson-knowledge';
 import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 
@@ -77,5 +78,24 @@ describe('lesson-knowledge (purmix + risunci + art-bogema + coddyschool)', () =>
     const parsed = JSON.parse(fenced![1]) as unknown;
     expect(() => DrawingScriptSchema.parse(parsed)).not.toThrow();
     expect(block).toMatch(/EXACT|точно/i);
+  });
+
+  it('snapStrokeToGrade tolerates near-misses (live o=0.4 case)', () => {
+    const a = snapStrokeToGrade(1.2, 0.4);
+    expect(a?.grade).toBe('HB');
+    expect(a?.snapped).toBe(true);
+    expect(a?.o).toBeGreaterThanOrEqual(0.45);
+    const b = snapStrokeToGrade(1.6, 0.5);
+    expect(b).toBeTruthy();
+    expect(b?.snapped).toBe(true);
+  });
+
+  it('snapStrokeToGrade leaves exact bands untouched', () => {
+    expect(snapStrokeToGrade(1.2, 0.5)).toMatchObject({ w: 1.2, o: 0.5, snapped: false });
+  });
+
+  it('snapStrokeToGrade rejects garbage (w=9 stays undefined)', () => {
+    expect(snapStrokeToGrade(9, 1)).toBeUndefined();
+    expect(snapStrokeToGrade(1.2, 0.05)).toBeUndefined();
   });
 });

@@ -1,0 +1,86 @@
+[
+ {
+  "id": "katana-01",
+  "file": "/reference/katana/katana-01.svg",
+  "bbox": [
+   309,
+   154,
+   114,
+   1605
+  ],
+  "paths": 3,
+  "bytes": 7448
+ },
+ {
+  "id": "katana-02",
+  "file": "/reference/katana/katana-02.svg",
+  "bbox": [
+   507,
+   1306,
+   201,
+   463
+  ],
+  "paths": 12,
+  "bytes": 21463
+ },
+ {
+  "id": "katana-03",
+  "file": "/reference/katana/katana-03.svg",
+  "bbox": [
+   794,
+   154,
+   114,
+   1605
+  ],
+  "paths": 8,
+  "bytes": 16269
+ },
+ {
+  "id": "katana-04",
+  "file": "/reference/katana/katana-04.svg",
+  "bbox": [
+   1001,
+   155,
+   179,
+   1612
+  ],
+  "paths": 27,
+  "bytes": 61233
+ },
+ {
+  "id": "katana-05",
+  "file": "/reference/katana/katana-05.svg",
+  "bbox": [
+   1333,
+   154,
+   114,
+   1605
+  ],
+  "paths": 11,
+  "bytes": 12497
+ },
+ {
+  "id": "katana-06",
+  "file": "/reference/katana/katana-06.svg",
+  "bbox": [
+   1562,
+   154,
+   125,
+   1608
+  ],
+  "paths": 22,
+  "bytes": 33558
+ },
+ {
+  "id": "katana-07",
+  "file": "/reference/katana/katana-07.svg",
+  "bbox": [
+   1823,
+   1281,
+   280,
+   491
+  ],
+  "paths": 5,
+  "bytes": 9164
+ }
+]

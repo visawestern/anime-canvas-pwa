@@ -56,4 +56,17 @@ describe('EntityGenerator (new character/item/location by prompt)', () => {
     expect((screen.getByLabelText(/промпт/i) as HTMLTextAreaElement).value).toContain('волшебница');
     expect((screen.getByLabelText(/имя/i) as HTMLInputElement).value).toBe('Ая');
   });
+
+  it('preset from the katana gallery fills the form', async () => {
+    render(
+      <EntityGenerator
+        kind="item"
+        title="Новый предмет"
+        onSaved={() => {}}
+        preset={{ prompt: 'катанный ремикс', name: 'Катана-Заготовка' }}
+      />,
+    );
+    expect((screen.getByLabelText(/промпт/i) as HTMLTextAreaElement).value).toContain('катанный');
+    expect((screen.getByLabelText(/имя/i) as HTMLInputElement).value).toBe('Катана-Заготовка');
+  });
 });

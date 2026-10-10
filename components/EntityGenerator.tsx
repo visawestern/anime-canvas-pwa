@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DrawingScriptSchema, type DrawingScript } from '@/lib/drawing-script-schema';
 import { auditCraft } from '@/lib/svg-craft';
 import { saveEntity, type EntityKind } from '@/lib/entities';
@@ -9,15 +9,24 @@ export interface EntityGeneratorProps {
   kind: EntityKind;
   title: string;
   onSaved?: (script: DrawingScript) => void;
+  /** external preset (e.g. katana gallery remix): fills the form once applied */
+  preset?: { prompt: string; name: string } | null;
 }
 
 /** New character/item/location from a text prompt: generate -> validate -> save to library. */
-export function EntityGenerator({ kind, title, onSaved }: EntityGeneratorProps) {
+export function EntityGenerator({ kind, title, onSaved, preset }: EntityGeneratorProps) {
   const [name, setName] = useState('');
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const templates = templatesFor(kind);
+
+  useEffect(() => {
+    if (preset) {
+      setPrompt(preset.prompt);
+      setName(preset.name);
+    }
+  }, [preset]);
 
   function onTemplate(id: string) {
     const t = getTemplate(id);

@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { scriptToSvg, shiftPartMarkup, highlightPartMarkup, verifyFilm } from '@/lib/svg-film';
+import { scriptToSvg, highlightPartMarkup, verifyFilm } from '@/lib/svg-film';
+import { saveFrame } from '@/lib/frames';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
-
-const NUDGE = 8;
 
 function fmt(total: number): string {
   const s = Math.max(0, total);
@@ -11,27 +10,30 @@ function fmt(total: number): string {
 }
 
 /**
- * Reference-style write-on film: retained SVG DOM, one <g> per layer drawing
- * itself in sequence (pathLength=1 + --dl/--d). Parts panel (right side, z-order):
- * select paints every line of the part red, arrows move it with zero redraw.
+ * Reference-style write-on film: retained SVG DOM, one <g> per part drawing
+ * itself in sequence. The scene stays whole with grouped parts; parts panel
+ * (right side, z-order) selects (red) and reveals progressively.
+ * "Сохранить кадр" snapshots the SVG; the next frame stores only the diff.
  */
 export function SvgFilm({ script }: { script: DrawingScript }) {
   const [nonce, setNonce] = useState(0);
   const [speed, setSpeed] = useState(1);
-  const [moves, setMoves] = useState<Record<string, { dx: number; dy: number }>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [lastFrameId, setLastFrameId] = useState<string | null>(null);
+  const [frameNo, setFrameNo] = useState(0);
+  const [frameStatus, setFrameStatus] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
 
   const film = useMemo(() => scriptToSvg(script), [script]);
   const svg = useMemo(() => {
-    let out = film.svg;
-    for (const [gid, m] of Object.entries(moves)) {
-      if (m.dx !== 0 || m.dy !== 0) out = shiftPartMarkup(out, gid, m.dx, m.dy);
+    if (!selected) return film.svg;
+    try {
+      return highlightPartMarkup(film.svg, selected);
+    } catch {
+      return film.svg;
     }
-    if (selected) out = highlightPartMarkup(out, selected);
-    return out;
-  }, [film, moves, selected]);
+  }, [film, selected]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -63,10 +65,23 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
     };
   }, [film.total, speed, nonce]);
 
-  const nudge = (gid: string, dx: number, dy: number) =>
-    setMoves((prev) => ({ ...prev, [gid]: { dx: (prev[gid]?.dx ?? 0) + dx, dy: (prev[gid]?.dy ?? 0) + dy } }));
+  async function onSaveFrame() {
+    try {
+      const frame = await saveFrame(film.svg, lastFrameId);
+      setLastFrameId(frame.id);
+      setFrameNo((n) => n + 1);
+      setFrameStatus(
+        frame.prevId === null
+          ? `Кадр ${frameNo + 1} сохранён (полный, ${frame.bytes} bytes).`
+          : frame.changed.length === 0
+            ? `Кадр ${frameNo + 1} сохранён (без изменений).`
+            : `Кадр ${frameNo + 1} сохранён (diff частей: ${frame.changed.length}, ${frame.bytes} bytes).`,
+      );
+    } catch (e) {
+      setFrameStatus(`Ошибка сохранения кадра: ${(e as Error).message}`);
+    }
+  }
 
-  const doneUpTo = (t: number) => elapsed >= film.total || elapsed >= t;
   const check = useMemo(() => verifyFilm(svg), [svg]);
   const fillsEntry = film.schedule.find((s) => s.kind === 'fills');
 
@@ -93,11 +108,17 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
             ×{s}
           </button>
         ))}
+        <button type="button" className="btn-primary" onClick={onSaveFrame}>
+          Сохранить кадр
+        </button>
       </div>
+      <p data-testid="frame-status" className="status">
+        {frameStatus}
+      </p>
       <h3>Элементы (порядок наложения: первый рисуется нижним)</h3>
       <ul className="log" data-testid="film-parts">
         {film.parts.map((p, i) => {
-          const drawn = doneUpTo(p.t);
+          const drawn = elapsed >= film.total || elapsed >= p.t;
           const isSel = selected === p.id;
           return (
             <li key={p.id} className={isSel ? 'on' : ''}>
@@ -112,20 +133,6 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
               </button>{' '}
               <span className="badge">
                 z#{i + 1} · {p.paths} лин.
-              </span>{' '}
-              <span className="btn-row">
-                <button type="button" aria-label={`влево ${p.part}`} onClick={() => nudge(p.id, -NUDGE, 0)}>
-                  ◀
-                </button>
-                <button type="button" aria-label={`вправо ${p.part}`} onClick={() => nudge(p.id, NUDGE, 0)}>
-                  ▶
-                </button>
-                <button type="button" aria-label={`вверх ${p.part}`} onClick={() => nudge(p.id, 0, -NUDGE)}>
-                  ▲
-                </button>
-                <button type="button" aria-label={`вниз ${p.part}`} onClick={() => nudge(p.id, 0, NUDGE)}>
-                  ▼
-                </button>
               </span>
             </li>
           );

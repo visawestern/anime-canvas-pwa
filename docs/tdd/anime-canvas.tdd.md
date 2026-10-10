@@ -194,6 +194,17 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
   4 verification tests + 1 component test.
 - Verification: 231/231 tests, `tsc` 0, coverage 90.7%/80.5%/90.7%, build OK.
 
+## Session 15 — katana references (user-supplied SVGs)
+- Analyzed Katana-02.svg (173KB, 95 paths, Illustrator): 7 vertical katanas in a row (bbox-clustered
+  strips); colors via gradients. Decomposed programmatically into 7 standalone SVGs
+  (public/reference/katana/*.svg, 7–61KB) + inventory (bbox/paths/bytes).
+- Katana.svg scene (2.8MB, katana with saya in a room) stored as drawing-example reference.
+- `lib/katana-reference.ts`: pieces inventory (file-locked test), KATANA_BRIEF (tsuka/tsuba/blade/
+  hamon/saya construction), remix prefix, scene caption.
+- UI: KatanaGallery on items page (7 piece imgs + remix buttons feeding EntityGenerator preset +
+  room-scene example); EntityGenerator `preset` prop. 5 UI tests.
+- Verification: 260/260 tests, `tsc` 0, coverage 91.3%/81.5%/93.2%, build OK.
+
 ## Session 14 — parts decomposition, z-order panel, frame diff (user order)
 - Schema: optional `step.part` (backward compatible).
 - Prompts: PARTS_BLOCK in BASE + director (closed contours per component, back-to-front z-order,

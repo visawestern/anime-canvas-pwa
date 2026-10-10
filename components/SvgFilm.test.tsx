@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { SvgFilm } from '@/components/SvgFilm';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
 
@@ -43,15 +43,12 @@ describe('SvgFilm (reference-style write-on film)', () => {
     expect(screen.getByRole('button', { name: /×5/i }).className).toMatch(/on/);
   });
 
-  it('nudge buttons move one part without touching others', () => {
-    const { container } = render(<SvgFilm script={script} />);
-    const rows = within(screen.getByTestId('film-parts')).getAllByRole('listitem');
-    const inkRow = rows.find((li) => li.textContent?.includes('контур'))!;
-    fireEvent.click(within(inkRow).getByRole('button', { name: /вправо/i }));
-    const html = container.innerHTML;
-    expect(html).toContain('part-ink-kontur');
-    expect(html).toContain('transform="translate(8 0)"');
-    expect(html).not.toContain('part-construction-karkas" data-part="каркас" transform');
+  it('has no movement controls (scene stays whole until the animation phase)', () => {
+    render(<SvgFilm script={script} />);
+    expect(screen.queryByRole('button', { name: /влево/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /вправо/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /вверх/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /вниз/i })).toBeNull();
   });
 
   it('selecting a part paints all its lines red, deselect restores', () => {
@@ -85,5 +82,13 @@ describe('SvgFilm (reference-style write-on film)', () => {
     const empty = { ...script, steps: [] } as unknown as DrawingScript;
     render(<SvgFilm script={empty} />);
     expect(screen.getByTestId('film-check').textContent).toMatch(/empty|nothing/i);
+  });
+
+  it('save frame stores full first, then diff of the unchanged film', async () => {
+    render(<SvgFilm script={script} />);
+    fireEvent.click(screen.getByRole('button', { name: /сохранить кадр/i }));
+    await waitFor(() => expect(screen.getByTestId('frame-status').textContent).toMatch(/полный/));
+    fireEvent.click(screen.getByRole('button', { name: /сохранить кадр/i }));
+    await waitFor(() => expect(screen.getByTestId('frame-status').textContent).toMatch(/без изменений/));
   });
 });

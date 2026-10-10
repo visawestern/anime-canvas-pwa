@@ -62,4 +62,21 @@ describe('playScriptOnCanvas (single-canvas film)', () => {
     ]);
     expect(canvas.__ctx.stroke).toHaveBeenCalled();
   });
+
+  it('skips a broken stroke but finishes the film with a report (live user case)', async () => {
+    const canvas = stubCanvas();
+    const skipped: { stepId: number; path: string }[] = [];
+    await playScriptOnCanvas(
+      canvas,
+      [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L10 10' }] },
+        { id: 2, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 X1 1' }] },
+        { id: 3, kind: 'ink', layer: 'a', strokes: [{ path: 'M0 0 L5 5', w: 2.4, o: 1 }] },
+      ],
+      { onSkip: (s) => skipped.push({ stepId: s.stepId, path: s.path }) },
+    );
+    expect(canvas.__ctx.stroke).toHaveBeenCalled();
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]).toMatchObject({ stepId: 2, path: 'M0 0 X1 1' });
+  });
 });

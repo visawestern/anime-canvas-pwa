@@ -2,53 +2,199 @@ import type { Point } from './pencil-engine';
 import { applyJitter } from './pencil-engine';
 import { gradeOfStroke } from './lesson-knowledge';
 
-const CMD = /^([MLCZ])$/;
+const KNOWN = /^[MLHVCSQTAZ]$/i;
 
-/** Parse DrawingScript SVG path subset (absolute M/L/C/Z) into sampled polyline. Throws on anything else. */
+/**
+ * Full SVG path parser (M/L/H/V/C/S/Q/T/A/Z, relative variants, implicit lineto).
+ * Models emit the whole SVG vocabulary — the film must draw it, not crash on it.
+ * True garbage (unknown commands, bad numbers) still throws honestly.
+ */
 export function svgPathToPoints(d: string, curveSamples = 8): Point[] {
-  const tokens = d.match(/[MLCZ]|-?\d*\.?\d+(?:e-?\d+)?/gi) ?? [];
+  const tokens = d.match(/[A-Za-z]|-?\d*\.?\d+(?:e-?\d+)?/g) ?? [];
   const pts: Point[] = [];
   let i = 0;
   let start: Point | null = null;
   let cur: Point | null = null;
+  let cmd = '';
+  // reflection memory for smooth commands
+  let prevCubic: Point | null = null;
+  let prevQuad: Point | null = null;
+
+  const num = (): number => {
+    const v = Number(tokens[i++]);
+    if (!Number.isFinite(v)) throw new Error(`invalid coordinates in path: ${d}`);
+    return v;
+  };
+  const needCur = (): Point => {
+    if (!cur) throw new Error(`path starts with drawing command before moveto: ${d}`);
+    return cur;
+  };
+  const lineTo = (p: Point) => {
+    pts.push(p);
+    cur = p;
+  };
+  const cubic = (x1: number, y1: number, x2: number, y2: number, x: number, y: number) => {
+    const [x0, y0] = needCur();
+    for (let s = 1; s <= curveSamples; s++) {
+      const t = s / curveSamples;
+      const mt = 1 - t;
+      pts.push([
+        mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x,
+        mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y,
+      ]);
+    }
+    cur = [x, y];
+    prevCubic = [x2, y2];
+    prevQuad = null;
+  };
+  const quad = (x1: number, y1: number, x: number, y: number) => {
+    const [x0, y0] = needCur();
+    for (let s = 1; s <= curveSamples; s++) {
+      const t = s / curveSamples;
+      const mt = 1 - t;
+      pts.push([mt * mt * x0 + 2 * mt * t * x1 + t * t * x, mt * mt * y0 + 2 * mt * t * y1 + t * t * y]);
+    }
+    cur = [x, y];
+    prevQuad = [x1, y1];
+    prevCubic = null;
+  };
 
   while (i < tokens.length) {
-    const t = tokens[i++];
-    if (!CMD.test(t)) throw new Error(`unsupported SVG command in DrawingScript path: ${t}`);
-    if (t === 'Z') {
-      if (start) {
-        pts.push([...start]);
-        cur = start;
-      }
-      continue;
+    let t = tokens[i];
+    if (/^[A-Za-z]$/.test(t)) {
+      if (!KNOWN.test(t)) throw new Error(`unsupported SVG command in DrawingScript path: ${t}`);
+      cmd = tokens[i++];
+    } else if (!cmd) {
+      throw new Error(`unsupported SVG command in DrawingScript path: ${t}`);
     }
-    if (t === 'M' || t === 'L') {
-      const x = Number(tokens[i++]);
-      const y = Number(tokens[i++]);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`invalid coordinates in path: ${d}`);
-      cur = [x, y];
-      if (t === 'M') start = [x, y];
-      pts.push([x, y]);
-      continue;
-    }
-    if (t === 'C') {
-      const nums = [0, 1, 2, 3, 4, 5].map(() => Number(tokens[i++]));
-      if (nums.some((n) => !Number.isFinite(n)) || !cur) throw new Error(`invalid C command in path: ${d}`);
-      const [x1, y1, x2, y2, x, y] = nums;
-      const [x0, y0] = cur;
-      for (let s = 1; s <= curveSamples; s++) {
-        const t2 = s / curveSamples;
-        const mt = 1 - t2;
-        pts.push([
-          mt * mt * mt * x0 + 3 * mt * mt * t2 * x1 + 3 * mt * t2 * t2 * x2 + t2 * t2 * t2 * x,
-          mt * mt * mt * y0 + 3 * mt * mt * t2 * y1 + 3 * mt * t2 * t2 * y2 + t2 * t2 * t2 * y,
-        ]);
+    const rel = cmd === cmd.toLowerCase();
+    const C = cmd.toUpperCase();
+    const [cx, cy] = cur ?? [0, 0];
+    const abs = (x: number, y: number): Point => (rel ? [cx + x, cy + y] : [x, y]);
+
+    switch (C) {
+      case 'M': {
+        const p = abs(num(), num());
+        pts.push(p);
+        cur = p;
+        start = p;
+        prevCubic = prevQuad = null;
+        cmd = rel ? 'l' : 'L'; // implicit lineto pairs
+        break;
       }
-      cur = [x, y];
+      case 'L': {
+        lineTo(abs(num(), num()));
+        prevCubic = prevQuad = null;
+        break;
+      }
+      case 'H': {
+        const x = num();
+        lineTo(rel ? [cx + x, cy] : [x, cy]);
+        prevCubic = prevQuad = null;
+        break;
+      }
+      case 'V': {
+        const y = num();
+        lineTo(rel ? [cx, cy + y] : [cx, y]);
+        prevCubic = prevQuad = null;
+        break;
+      }
+      case 'C': {
+        const [x1, y1] = abs(num(), num());
+        const [x2, y2] = abs(num(), num());
+        const [x, y] = abs(num(), num());
+        cubic(x1, y1, x2, y2, x, y);
+        break;
+      }
+      case 'S': {
+        const [x2, y2] = abs(num(), num());
+        const [x, y] = abs(num(), num());
+        const [px, py] = needCur();
+        const [rx, ry] = prevCubic ?? [px, py];
+        cubic(2 * px - rx, 2 * py - ry, x2, y2, x, y);
+        break;
+      }
+      case 'Q': {
+        const [x1, y1] = abs(num(), num());
+        const [x, y] = abs(num(), num());
+        quad(x1, y1, x, y);
+        break;
+      }
+      case 'T': {
+        const [x, y] = abs(num(), num());
+        const [px, py] = needCur();
+        const [rx, ry] = prevQuad ?? [px, py];
+        quad(2 * px - rx, 2 * py - ry, x, y);
+        break;
+      }
+      case 'A': {
+        const rx = num();
+        const ry = num();
+        num(); // x-axis rotation (ignored for near-circular anime curves)
+        const large = num();
+        const sweep = num();
+        const [x, y] = abs(num(), num());
+        for (const p of arcPoints(needCur(), rx, ry, large !== 0, sweep !== 0, [x, y])) pts.push(p);
+        cur = [x, y];
+        prevCubic = prevQuad = null;
+        break;
+      }
+      case 'Z': {
+        if (start) {
+          pts.push([...start]);
+          cur = start;
+        }
+        prevCubic = prevQuad = null;
+        cmd = '';
+        break;
+      }
     }
   }
   if (pts.length === 0) throw new Error(`empty path: ${d}`);
   return pts;
+}
+
+/** SVG arc endpoint parameterization sampled as a polyline (F.6.5, rotation ignored). */
+function arcPoints(p0: Point, rx: number, ry: number, large: boolean, sweep: boolean, p1: Point): Point[] {
+  const [x1, y1] = p0;
+  const [x2, y2] = p1;
+  let rrx = Math.abs(rx);
+  let rry = Math.abs(ry);
+  if (rrx < 1e-9 || rry < 1e-9) return [[x2, y2]];
+  const dx = (x1 - x2) / 2;
+  const dy = (y1 - y2) / 2;
+  const lam = (dx * dx) / (rrx * rrx) + (dy * dy) / (rry * rry);
+  if (lam > 1) {
+    const s = Math.sqrt(lam);
+    rrx *= s;
+    rry *= s;
+  }
+  const num = rrx * rrx * rry * rry - rrx * rrx * dy * dy - rry * rry * dx * dx;
+  const den = rrx * rrx * dy * dy + rry * rry * dx * dx;
+  const f = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, den < 1e-9 ? 0 : num / den));
+  const cxp = (f * rrx * dy) / rry;
+  const cyp = (-f * rry * dx) / rrx;
+  const cx = cxp + (x1 + x2) / 2;
+  const cy = cyp + (y1 + y2) / 2;
+  const ang = (ux: number, uy: number, vx: number, vy: number): number => {
+    const dot = ux * vx + uy * vy;
+    const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+    let a = Math.acos(Math.min(1, Math.max(-1, len < 1e-9 ? 1 : dot / len)));
+    if (ux * vy - uy * vx < 0) a = -a;
+    return a;
+  };
+  let a1 = ang(1, 0, (dx - cxp) / rrx, (dy - cyp) / rry);
+  let da = ang((dx - cxp) / rrx, (dy - cyp) / rry, (-dx - cxp) / rrx, (-dy - cyp) / rry);
+  if (!sweep && da > 0) da -= 2 * Math.PI;
+  if (sweep && da < 0) da += 2 * Math.PI;
+  const n = 12;
+  const out: Point[] = [];
+  for (let s = 1; s <= n; s++) {
+    const a = a1 + (da * s) / n;
+    out.push([cx + rrx * Math.cos(a), cy + rry * Math.sin(a)]);
+  }
+  out[out.length - 1] = [x2, y2];
+  return out;
 }
 
 /** True when enough ms elapsed since last frame at given fps (12fps throttle). */
@@ -74,6 +220,8 @@ export interface PlayOpts {
   speed?: number;
   signal?: AbortSignal;
   onStep?: (step: PlayStep, index: number, total: number) => void;
+  /** A broken stroke is skipped (film goes on) but always reported — never silent. */
+  onSkip?: (info: { stepId: number; path: string; error: string }) => void;
 }
 
 /** Grade-aware stroke color: HB construction stays light gray, B6 press draws near-ink dark (purmix). */
@@ -94,6 +242,20 @@ function tracePath(ctx: CanvasRenderingContext2D, pts: Point[]) {
 
 function frame(): Promise<void> {
   return new Promise((r) => requestAnimationFrame(() => r()));
+}
+
+/** Parse one path; on failure report via onSkip and let the film continue. */
+function safePoints(
+  path: string,
+  stepId: number,
+  opts: PlayOpts,
+): Point[] | null {
+  try {
+    return svgPathToPoints(path);
+  } catch (e) {
+    opts.onSkip?.({ stepId, path, error: (e as Error).message });
+    return null;
+  }
 }
 
 /**
@@ -126,7 +288,8 @@ export async function playScriptOnCanvas(
       ctx.lineJoin = 'round';
       for (const s of step.strokes ?? []) {
         if (opts.signal?.aborted) return;
-        const raw = svgPathToPoints(s.path);
+        const raw = safePoints(s.path, step.id, opts);
+        if (!raw) continue;
         const pts = applyJitter(raw, 0.6);
         ctx.strokeStyle = strokeStyleFor(step.kind, { w: s.w, o: s.o });
         ctx.lineWidth = (s.w ?? (step.kind === 'pencil' ? 1.2 : 2.2)) * (512 / canvas.width);
@@ -153,7 +316,11 @@ export async function playScriptOnCanvas(
       // erase listed strokes, or — when the model says "wipe construction" with no paths —
       // repaint paper over nothing else: honest no-op that keeps ink intact is impossible
       // on a single canvas, so we erase a soft band where construction lines live (top third).
-      const targets = (step.strokes ?? []).map((s) => svgPathToPoints(s.path));
+      const targets: Point[][] = [];
+      for (const s of step.strokes ?? []) {
+        const pts = safePoints(s.path, step.id, opts);
+        if (pts) targets.push(pts);
+      }
       if (targets.length === 0) {
         ctx.fillStyle = 'rgba(0,0,0,1)';
         ctx.globalAlpha = 0.0; // no-op guard: never nuke the drawing blindly
@@ -175,7 +342,8 @@ export async function playScriptOnCanvas(
       ctx.save();
       ctx.globalAlpha = step.kind === 'shade' ? 0.35 : 1;
       for (const f of step.fills ?? []) {
-        const pts = svgPathToPoints(f.path);
+        const pts = safePoints(f.path, step.id, opts);
+        if (!pts) continue;
         ctx.beginPath();
         ctx.moveTo(pts[0][0], pts[0][1]);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
@@ -189,7 +357,9 @@ export async function playScriptOnCanvas(
       ctx.lineJoin = 'round';
       for (const s of step.strokes ?? []) {
         if (opts.signal?.aborted) return;
-        const pts = applyJitter(svgPathToPoints(s.path), 0.3);
+        const raw = safePoints(s.path, step.id, opts);
+        if (!raw) continue;
+        const pts = applyJitter(raw, 0.3);
         ctx.strokeStyle = strokeStyleFor('pencil', { w: s.w, o: s.o });
         ctx.globalAlpha = step.kind === 'shade' ? 0.55 : 1;
         ctx.lineWidth = (s.w ?? 1.6) * (512 / canvas.width);

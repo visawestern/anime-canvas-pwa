@@ -40,12 +40,19 @@ export function CanvasStage() {
     showScript(script, headline);
     const ctl = new AbortController();
     abortRef.current = ctl;
+    let skipped = 0;
     await playScriptOnCanvas(canvasRef.current!, script.steps, {
       signal: ctl.signal,
       onStep: (s, i, total) => setStatus(`Шаг ${i + 1}/${total} — ${s.kind}: ${s.label ?? s.layer}`),
+      onSkip: () => {
+        skipped++;
+      },
     });
     if (!ctl.signal.aborted)
-      setStatus(`Готово. Нажми «Анимировать» — задвигаются только ${script.anim.dirtyLayers.join(', ') || 'магия'}.`);
+      setStatus(
+        `Готово. Нажми «Анимировать» — задвигаются только ${script.anim.dirtyLayers.join(', ') || 'магия'}.` +
+          (skipped > 0 ? ` Пропущено битых штрихов: ${skipped}.` : ''),
+      );
   }
 
   // view-only replay after undo/redo/jump: moves the pointer, commits nothing

@@ -18,8 +18,17 @@ export function EntityPreview({ script }: { script: DrawingScript | null }) {
       if (!canvas) return;
       try {
         setStatus(`Рисую: ${script.steps.length} шагов…`);
-        await playScriptOnCanvas(canvas, script.steps, { signal: ctl.signal });
-        if (!cancelled && !ctl.signal.aborted) setStatus(`Готово: ${script.steps.length} шагов.`);
+        let skipped = 0;
+        await playScriptOnCanvas(canvas, script.steps, {
+          signal: ctl.signal,
+          onSkip: () => {
+            skipped++;
+          },
+        });
+        if (!cancelled && !ctl.signal.aborted)
+          setStatus(
+            `Готово: ${script.steps.length} шагов.` + (skipped > 0 ? ` Пропущено битых штрихов: ${skipped}.` : ''),
+          );
       } catch (e) {
         if (!cancelled) setStatus(`Ошибка воспроизведения: ${(e as Error).message}`);
       }

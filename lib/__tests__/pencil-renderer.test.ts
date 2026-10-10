@@ -9,6 +9,59 @@ describe('svgPathToPoints (M/L/C/Z subset for DrawingScript)', () => {
     ]);
   });
 
+  it('parses H/V orthogonal lines (live model drift)', () => {
+    expect(svgPathToPoints('M10 10 H40 V50 H10 Z')).toEqual([
+      [10, 10],
+      [40, 10],
+      [40, 50],
+      [10, 50],
+      [10, 10],
+    ]);
+  });
+
+  it('parses relative commands', () => {
+    expect(svgPathToPoints('m10 10 l20 0 l0 20 z')).toEqual([
+      [10, 10],
+      [30, 10],
+      [30, 30],
+      [10, 10],
+    ]);
+  });
+
+  it('parses implicit lineto pairs after moveto', () => {
+    expect(svgPathToPoints('M10 10 20 20 30 10')).toEqual([
+      [10, 10],
+      [20, 20],
+      [30, 10],
+    ]);
+  });
+
+  it('parses smooth cubic S (reflected control point)', () => {
+    const pts = svgPathToPoints('M0 0 C10 0 20 0 30 0 S50 0 60 0');
+    expect(pts[0]).toEqual([0, 0]);
+    const last = pts[pts.length - 1];
+    expect(last[0]).toBeCloseTo(60, 0);
+    expect(last[1]).toBeCloseTo(0, 0);
+    expect(pts.length).toBeGreaterThan(4);
+  });
+
+  it('parses quadratic Q and smooth T', () => {
+    const pts = svgPathToPoints('M0 0 Q10 10 20 0 T40 0');
+    expect(pts[0]).toEqual([0, 0]);
+    const last = pts[pts.length - 1];
+    expect(last[0]).toBeCloseTo(40, 0);
+    expect(last[1]).toBeCloseTo(0, 0);
+  });
+
+  it('parses arc A by endpoints with correct bulge', () => {
+    const pts = svgPathToPoints('M0 0 A10 10 0 0 1 20 0');
+    expect(pts[0]).toEqual([0, 0]);
+    const last = pts[pts.length - 1];
+    expect(last[0]).toBeCloseTo(20, 0);
+    expect(last[1]).toBeCloseTo(0, 0);
+    expect(Math.min(...pts.map((p) => p[1]))).toBeLessThan(0);
+  });
+
   it('parses M+C cubic (sampled)', () => {
     const pts = svgPathToPoints('M0 0 C0 0 10 0 10 10');
     expect(pts.length).toBeGreaterThan(2);
@@ -24,7 +77,8 @@ describe('svgPathToPoints (M/L/C/Z subset for DrawingScript)', () => {
   });
 
   it('throws on unsupported command (no silent skip)', () => {
-    expect(() => svgPathToPoints('M0 0 Q5 5 10 10')).toThrow();
+    expect(() => svgPathToPoints('M0 0 Q5 5 10 10')).not.toThrow();
+    expect(() => svgPathToPoints('M0 0 X10 10')).toThrow(/unsupported/);
   });
 });
 

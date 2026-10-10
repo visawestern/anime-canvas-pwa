@@ -10,6 +10,19 @@ describe('PWA shell', () => {
     expect(sw).toMatch(/\/api\//);
   });
 
+  it('sw.js is network-first for pages (never serves a stale shell)', () => {
+    const sw = fs.readFileSync(path.resolve(__dirname, '../../public/sw.js'), 'utf8');
+    expect(sw).toMatch(/navigate/);
+    expect(sw).not.toMatch(/animecanvas-v1'/);
+  });
+
+  it('sw.js precaches every app page upfront (instant offline shell)', () => {
+    const sw = fs.readFileSync(path.resolve(__dirname, '../../public/sw.js'), 'utf8');
+    for (const page of ['/', '/characters', '/items', '/locations', '/scenes', '/manifest.webmanifest']) {
+      expect(sw).toContain(`'${page}'`);
+    }
+  });
+
   it('manifest is installable (name, icons, standalone)', () => {
     const m = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../public/manifest.webmanifest'), 'utf8'));
     expect(m.name).toBeTruthy();

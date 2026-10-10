@@ -1,16 +1,24 @@
 'use client';
-import { KATANA_PIECES, KATANA_SCENE, KATANA_BRIEF } from '@/lib/katana-reference';
+import { useState } from 'react';
+import { KATANA_PIECES, KATANA_SCENE, type KatanaPiece } from '@/lib/katana-reference';
 
 export interface KatanaGalleryProps {
-  onRemix: (prompt: string, name: string) => void;
+  onRemix: (piece: KatanaPiece, extraPrompt: string) => void;
+  busy: boolean;
 }
 
 /** Decomposed katana pack (7 standalone pieces) + room scene example as remix bases. */
-export function KatanaGallery({ onRemix }: KatanaGalleryProps) {
+export function KatanaGallery({ onRemix, busy }: KatanaGalleryProps) {
+  const [extra, setExtra] = useState('');
+
   return (
     <section aria-label="Эталоны катан" className="card">
       <h2>Эталоны: пачка катан</h2>
-      <p className="status">Разобранный Katana-02: 7 клинков по отдельности. Возьми любой за основу ремикса.</p>
+      <p className="status">Разобранный Katana-02: 7 клинков по отдельности. Опиши изменение — эталон подставится сам.</p>
+      <label>
+        Что изменить
+        <textarea aria-label="Что изменить" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="красная оплётка рукояти, гравировка дракона на клинке" />
+      </label>
       <ul className="list">
         {KATANA_PIECES.map((p) => (
           <li key={p.id}>
@@ -18,10 +26,7 @@ export function KatanaGallery({ onRemix }: KatanaGalleryProps) {
             <span>
               {p.id} <span className="badge">{p.paths} лин.</span>
             </span>{' '}
-            <button
-              type="button"
-              onClick={() => onRemix(`${KATANA_BRIEF}\n\nРемикс ${p.id}: `, `Катана ${p.id}`)}
-            >
+            <button type="button" onClick={() => onRemix(p, extra)} disabled={busy}>
               Взять за основу
             </button>
           </li>

@@ -194,6 +194,17 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
   4 verification tests + 1 component test.
 - Verification: 231/231 tests, `tsc` 0, coverage 90.7%/80.5%/90.7%, build OK.
 
+## Session 16 — fixed 1s/object timing + katana vision remix (user orders)
+- Timing: removed DRAW_SPEED/path-length durations — every path draws exactly 1s at 1x
+  (speed buttons scale via playbackRate); dots no longer pop. 2 timing tests rewritten.
+- No server-side SVG rasterizer exists (no rsvg/inkscape/chromium/cairosvg) — remix rasterizes
+  in-browser: `lib/rasterize.ts` (Image+canvas, honest outside-browser error) + `lib/remix.ts`
+  (reference + brief + user changes -> POST /api/draw vision -> validated script). 6 tests.
+- KatanaGallery: one "Что изменить" field + per-piece "Взять за основу" -> full vision remix,
+  save to library, preview, status. EntityGenerator preset removed as superseded (dead code out).
+- Verification: 266/266 tests, `tsc` 0, coverage 90.8%/81.3%/93.4%, build OK. Browser-only path
+  covered by mocked tests, not live (no canvas in this env) — verify by drawing in the app.
+
 ## Session 14 — parts decomposition, z-order panel, frame diff (user order)
 - Schema: optional `step.part` (backward compatible).
 - Prompts: PARTS_BLOCK in BASE + director (closed contours per component, back-to-front z-order,

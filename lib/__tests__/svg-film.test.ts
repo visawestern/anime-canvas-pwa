@@ -82,28 +82,29 @@ describe('scriptToSvg (Surbhi write-on film)', () => {
     expect(svg).toContain('stroke-width="1.2"');
   });
 
-  it('uniform drawing speed: duration proportional to path length', () => {
+  it('fixed 1s per object at 1x: any path length draws in the same time', () => {
     const lenScript = {
       ...script,
       steps: [
-        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L100 0', w: 1.2, o: 0.5 }] },
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L10 0', w: 1.2, o: 0.5 }] },
         { id: 2, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L1000 0', w: 1.2, o: 0.5 }] },
       ],
     } as unknown as DrawingScript;
     const { svg } = scriptToSvg(lenScript);
     const durs = [...svg.matchAll(/--d:([\d.]+)s/g)].map((m) => Number(m[1]));
     expect(durs).toHaveLength(2);
-    expect(durs[1] / durs[0]).toBeCloseTo(10, 0);
+    expect(durs[0]).toBeCloseTo(1, 2);
+    expect(durs[1]).toBeCloseTo(1, 2);
   });
 
-  it('dots pop instantly (zero length draws in zero time, by design)', () => {
+  it('dots take the same 1s as everything else (no instant pops)', () => {
     const dotScript = {
       ...script,
       steps: [{ id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M5 5 L5 5', w: 1.2, o: 0.5 }] }],
     } as unknown as DrawingScript;
     const { svg } = scriptToSvg(dotScript);
     const durs = [...svg.matchAll(/--d:([\d.]+)s/g)].map((m) => Number(m[1]));
-    expect(durs[0]).toBeCloseTo(0, 2);
+    expect(durs[0]).toBeCloseTo(1, 2);
   });
 });
 

@@ -36,28 +36,9 @@ export interface FilmScript {
 }
 
 const STEP_GAP = 0.35;
-const STROKE_DUR = 0.9;
+const STROKE_DUR = 1.0;
 const FILL_GAP = 0.3;
 const FILL_DUR = 0.8;
-/** Uniform drawing speed: every part draws at the same units/sec, no fast/slow limbs. */
-const DRAW_SPEED = 260;
-
-function polyLength(pts: Point[]): number {
-  let len = 0;
-  for (let i = 1; i < pts.length; i++) {
-    len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-  }
-  return len;
-}
-
-/** Duration for one path at uniform speed (zero-length dots pop instantly by design). */
-function pathDur(d: string, fallback: number): number {
-  try {
-    return polyLength(svgPathToPoints(d)) / DRAW_SPEED;
-  } catch {
-    return fallback;
-  }
-}
 
 function escId(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'layer';
@@ -107,12 +88,12 @@ export function scriptToSvg(
       if (!s || typeof s.path !== 'string' || !s.path) continue;
       const w = typeof s.w === 'number' ? s.w : step.kind === 'ink' ? 2.4 : 1.2;
       const o = typeof s.o === 'number' ? s.o : 1;
-      jobs.push({ stepId: step.id, layer, part, label, path: s.path, fill: null, ink, w, o, id: `s${step.id}-${si++}`, dd: pathDur(s.path, dur) });
+      jobs.push({ stepId: step.id, layer, part, label, path: s.path, fill: null, ink, w, o, id: `s${step.id}-${si++}`, dd: dur });
     }
     let fi = 0;
     for (const f of step.fills ?? []) {
       if (!f || typeof f.path !== 'string' || !f.path) continue;
-      jobs.push({ stepId: step.id, layer, part, label, path: f.path, fill: typeof f.color === 'string' ? f.color : '#999999', ink: false, w: 1, o: 1, id: `s${step.id}-f${fi++}`, dd: pathDur(f.path, dur) });
+      jobs.push({ stepId: step.id, layer, part, label, path: f.path, fill: typeof f.color === 'string' ? f.color : '#999999', ink: false, w: 1, o: 1, id: `s${step.id}-f${fi++}`, dd: dur });
     }
   }
   const strokeEnd = jobs.reduce((m, j, i) => Math.max(m, i * gap + j.dd), 0);

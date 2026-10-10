@@ -194,6 +194,21 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
   4 verification tests + 1 component test.
 - Verification: 231/231 tests, `tsc` 0, coverage 90.7%/80.5%/90.7%, build OK.
 
+## Session 14 — parts decomposition, z-order panel, frame diff (user order)
+- Schema: optional `step.part` (backward compatible).
+- Prompts: PARTS_BLOCK in BASE + director (closed contours per component, back-to-front z-order,
+  landscape→buildings→roads→actors, part naming).
+- `scriptToSvg`: nested `<g data-part>` groups (readable latin ids via transliteration + collision
+  suffix), `parts[]` schedule (z-order = paint order), shiftPartMarkup, highlightPartMarkup (red),
+  diffParts (geometry compare minus labels; added/removed included).
+- `verifyFilm` rewritten for nested groups (part blocks first, then plain layers).
+- `SvgFilm`: parts panel (z# badges, select→red toggle, progressive reveal, fills row w/o buttons).
+  Per-part nudge arrows were REMOVED per user order (scene stays whole; movement comes later).
+- SceneComposer "Новая версия": diff vs parent in status (only changed parts re-saved next frame).
+- Frames: `lib/frames.ts` full-base + diff-patches chain with tombstones; SvgFilm "Сохранить кадр"
+  stores full first, then only changed parts.
+- Verification: 255/255 tests, `tsc` 0, coverage 91.2%/81.4%/93.2%, build OK.
+
 ## Session 15 — katana references (user-supplied SVGs)
 - Analyzed Katana-02.svg (173KB, 95 paths, Illustrator): 7 vertical katanas in a row (bbox-clustered
   strips); colors via gradients. Decomposed programmatically into 7 standalone SVGs
@@ -204,16 +219,3 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
 - UI: KatanaGallery on items page (7 piece imgs + remix buttons feeding EntityGenerator preset +
   room-scene example); EntityGenerator `preset` prop. 5 UI tests.
 - Verification: 260/260 tests, `tsc` 0, coverage 91.3%/81.5%/93.2%, build OK.
-
-## Session 14 — parts decomposition, z-order panel, frame diff (user order)
-- Schema: optional `step.part` (backward compatible).
-- Prompts: PARTS_BLOCK in BASE + director (closed contours per component, back-to-front z-order,
-  landscape→buildings→roads→actors, part naming).
-- `scriptToSvg`: nested `<g data-part>` groups (readable latin ids via transliteration + collision
-  suffix), `parts[]` schedule (z-order = paint order), shiftPartMarkup, highlightPartMarkup (red),
-  diffParts (geometry compare minus labels; added/removed included).
-- `verifyFilm` rewritten for nested groups (part blocks first, then plain layers).
-- `SvgFilm`: parts panel (z# badges, select→red toggle, per-part nudge, progressive reveal, fills
-  row w/o buttons); layer nudge replaced by part nudge.
-- SceneComposer "Новая версия": diff vs parent in status (only changed parts re-saved next frame).
-- Verification: 247/247 tests, `tsc` 0, coverage 91% lines / 81.2% branches, build OK.

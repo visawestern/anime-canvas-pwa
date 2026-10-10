@@ -56,3 +56,21 @@ New journeys: prompt-draw character/item/location; compose scene from library ca
 - Playwright e2e still open; manual stroke editor still open.
 - Queue/scene storage is local (IndexedDB/localStorage) — no cloud sync.
 - Real scene generation quality depends on Gemma cloud output + 422-retry loop not yet implemented (client surfaces error, user retries).
+
+## Session 3 — model schema-drift fix (live user error)
+Symptom: `ollama unavailable: [70x invalid_type ...]` — Gemma returned style.palette/linePencil/lineInk as
+objects, steps without id/path, bones without name/from/to, morphTargets as object, anim.loop boolean.
+- `lib/script-normalize.ts`: repairs drift (palette object->array, {color}->string, d/points->path with
+  SVG serialization, id from n/order/index, kind/type+layer defaults, joint/start/end->name/from/to,
+  morphTargets->array, non-string loop->idle), drops geometry-less strokes only with recorded warnings,
+  throws on non-objects. 4 tests.
+- `exampleBlock()` in lesson-knowledge: fenced minimal example the model must copy EXACTLY; self-checked by
+  test (embedded JSON validates against DrawingScriptSchema). Wired into ANIME_DIRECTOR_PROMPT + KIND_PROMPTS.
+- `requestWithRepair` in ollama-server (MAX_TRIES=3): normalize->validate per attempt, repair message carries
+  the concrete error list, transport errors throw immediately, final error is a bounded summary
+  (`summarizeIssues`, 5 issues max). 3 retry tests.
+- Routes map ZodError -> 422 with bounded summary (not 502 "unavailable"); clients already render data.error.
+- Live proof (dev :3000, real gemma4:31b-cloud, kind=item): HTTP 200 first try, 0 normalize warnings —
+  pencil(HB 1.2/0.5)x3 -> ink -> fill -> shade, palette array, item-template layers.
+- Verification: 130/130 tests, `tsc` 0, coverage 90.6% lines / 81.6% branches / 90.5% funcs, `next build` OK.
+- Commits 4eb4893 + buildinfo-ignore pushed to https://github.com/visawestern/anime-canvas-pwa (main).

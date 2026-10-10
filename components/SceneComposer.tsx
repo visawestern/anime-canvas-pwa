@@ -11,6 +11,8 @@ import {
 } from '@/lib/entities';
 import { validateSceneLayers } from '@/lib/lesson-pipeline';
 import { auditCraft } from '@/lib/svg-craft';
+import { CastPicker } from '@/components/CastPicker';
+import { LocationPicker } from '@/components/LocationPicker';
 import {
   REFERENCE_ID,
   REFERENCE_META,
@@ -32,19 +34,12 @@ import {
   type SceneRequest,
 } from '@/lib/scene-composer';
 
-function parseList(v: string): string[] {
-  return v
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 /** Scene studio: cast from library, missing-draw proposals, paused queue, forks. */
 export function SceneComposer() {
   const [prompt, setPrompt] = useState('');
-  const [charactersInput, setCharactersInput] = useState('');
-  const [itemsInput, setItemsInput] = useState('');
-  const [locationInput, setLocationInput] = useState('');
+  const [castCharacters, setCastCharacters] = useState<string[]>([]);
+  const [castItems, setCastItems] = useState<string[]>([]);
+  const [castLocation, setCastLocation] = useState<string | null>(null);
   const [missing, setMissing] = useState<MissingReport | null>(null);
   const [queue, setQueue] = useState<QueuedPrompt[]>([]);
   const [scenes, setScenes] = useState<Entity[]>([]);
@@ -133,9 +128,9 @@ export function SceneComposer() {
     try {
       const req: SceneRequest = {
         prompt: prompt.trim(),
-        characters: parseList(charactersInput),
-        items: parseList(itemsInput),
-        location: locationInput.trim() || null,
+        characters: castCharacters,
+        items: castItems,
+        location: castLocation,
       };
       const report = resolveCast(req, await libraryIndex());
       if (!isComplete(report)) {
@@ -250,18 +245,9 @@ export function SceneComposer() {
         Промпт сцены
         <textarea aria-label="Промпт сцены" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
       </label>
-      <label>
-        Персонажи (через запятую, из библиотеки)
-        <input aria-label="Персонажи" value={charactersInput} onChange={(e) => setCharactersInput(e.target.value)} />
-      </label>
-      <label>
-        Предметы (через запятую, из библиотеки)
-        <input aria-label="Предметы" value={itemsInput} onChange={(e) => setItemsInput(e.target.value)} />
-      </label>
-      <label>
-        Место (из библиотеки)
-        <input aria-label="Место" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} />
-      </label>
+      <CastPicker kind="character" selected={castCharacters} onChange={setCastCharacters} />
+      <CastPicker kind="item" selected={castItems} onChange={setCastItems} />
+      <LocationPicker selected={castLocation} onChange={setCastLocation} />
       {pendingParent && <p>Новая версия сцены «{pendingParent.name}» (parent сохранится).</p>}
       <button type="button" className="btn-primary" onClick={onCompose} disabled={busy}>
         Собрать сцену
@@ -274,15 +260,15 @@ export function SceneComposer() {
           <h3>Нужно дорисовать</h3>
           {missing.characters.length > 0 && (
             <p>
-              Персонажи: {missing.characters.join(', ')} — нарисуй на вкладке «Персонажи».
+              Персонажи: {missing.characters.join(', ')} — удалены из библиотеки; выбери других выше или создай заново.
             </p>
           )}
           {missing.items.length > 0 && (
             <p>
-              Предметы: {missing.items.join(', ')} — нарисуй на вкладке «Предметы».
+              Предметы: {missing.items.join(', ')} — удалены из библиотеки; выбери другие выше или создай заново.
             </p>
           )}
-          {missing.location && <p>Место: {missing.location} — нарисуй на вкладке «Места».</p>}
+          {missing.location && <p>Место: {missing.location} — удалено из библиотеки; выбери другое выше.</p>}
         </div>
       )}
 
@@ -332,8 +318,8 @@ export function SceneComposer() {
                   type="button"
                   onClick={() => {
                     setPrompt(`Новая версия: ${s.name}`);
-                    setCharactersInput((s.cast?.characters ?? []).join(', '));
-                    setItemsInput((s.cast?.items ?? []).join(', '));
+                    setCastCharacters(s.cast?.characters ?? []);
+                    setCastItems(s.cast?.items ?? []);
                     setPendingParent({ id: s.id, name: s.name });
                   }}
                 >

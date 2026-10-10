@@ -80,6 +80,14 @@ describe('lesson-knowledge (purmix + risunci + art-bogema + coddyschool)', () =>
     expect(block).toMatch(/EXACT|точно/i);
   });
 
+  it('example is strokes-only line art (no fill steps, like the reference)', () => {
+    const block = exampleBlock();
+    const fenced = block.match(/```json\s*([\s\S]*?)```/);
+    const parsed = JSON.parse(fenced![1]) as { steps: { kind: string }[] };
+    expect(parsed.steps.length).toBeGreaterThan(0);
+    expect(parsed.steps.every((s) => s.kind !== 'fill')).toBe(true);
+  });
+
   it('snapStrokeToGrade tolerates near-misses (live o=0.4 case)', () => {
     const a = snapStrokeToGrade(1.2, 0.4);
     expect(a?.grade).toBe('HB');

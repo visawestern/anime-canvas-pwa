@@ -182,7 +182,7 @@ export function snapStrokeToGrade(w: number, o: number): SnappedStroke | undefin
 }
 
 /**
- * Fenced minimal example the model must copy EXACTLY (key names and shapes).
+ * Fenced minimal line-art example the model must copy EXACTLY (key names and shapes).
  * Self-checked by test: the embedded JSON validates against DrawingScriptSchema.
  */
 export function exampleBlock(): string {
@@ -191,6 +191,6 @@ export function exampleBlock(): string {
 every bone has name/from/to, morphTargets is an ARRAY, anim.loop is a STRING):
 
 \`\`\`json
-{"style":{"palette":["#2b3a8f","#fff5f7"],"linePencil":"#6b7280","lineInk":"#14121f"},"layers":["construction","ink","fill"],"steps":[{"id":1,"kind":"pencil","layer":"construction","label":"axis","strokes":[{"path":"M10 10 L40 40","w":1.2,"o":0.5}]},{"id":2,"kind":"ink","layer":"ink","strokes":[{"path":"M10 10 L40 40","w":2.4,"o":1}]},{"id":3,"kind":"fill","layer":"fill","fills":[{"path":"M0 0 L10 0 L10 10 Z","color":"#fff5f7"}]}],"rig":{"bones":[],"morphTargets":[]},"anim":{"fps":12,"loop":"idle","dirtyLayers":[]}}
+{"style":{"palette":["#2b3a8f","#fff5f7"],"linePencil":"#6b7280","lineInk":"#14121f"},"layers":["construction","ink","shade"],"steps":[{"id":1,"kind":"pencil","layer":"construction","label":"axis","strokes":[{"path":"M10 10 L40 40","w":1.2,"o":0.5}]},{"id":2,"kind":"ink","layer":"ink","strokes":[{"path":"M10 10 L40 40","w":2.4,"o":1}]},{"id":3,"kind":"shade","layer":"shade","strokes":[{"path":"M12 12 L38 38","w":1.6,"o":0.7}]}],"rig":{"bones":[],"morphTargets":[]},"anim":{"fps":12,"loop":"idle","dirtyLayers":[]}}
 \`\`\``;
 }

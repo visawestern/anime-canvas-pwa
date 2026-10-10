@@ -1,6 +1,6 @@
 /** Kind-specific director briefs: text prompt -> DrawingScript JSON. Grounded in risunci lessons. */
 import { lessonBlock, exampleBlock } from './lesson-knowledge';
-import { svgCraftBlock } from './svg-craft';
+import { svgCraftBlock, lineArtBlock } from './svg-craft';
 
 export type GenerateKind = 'character' | 'item' | 'location' | 'scene';
 
@@ -11,6 +11,8 @@ Strokes use SVG path data (absolute M/L/C/Z) in a 0..512 viewBox. Construction o
 ${lessonBlock()}
 
 ${svgCraftBlock()}
+
+${lineArtBlock()}
 
 ${exampleBlock()}`;
 

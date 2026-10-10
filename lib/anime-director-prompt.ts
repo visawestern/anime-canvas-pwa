@@ -1,6 +1,6 @@
 /** System prompt: art-director grounded in drawing lessons (risunci/purmix/bogema/coddy). Model outputs DrawingScript JSON only. */
 import { lessonBlock, exampleBlock } from './lesson-knowledge';
-import { svgCraftBlock } from './svg-craft';
+import { svgCraftBlock, lineArtBlock } from './svg-craft';
 
 const PHOTO_BODY = `Construction order (from risunci.com lessons, mandatory):
 1. construction: pose axis — collar line, spine, shoulders, hips, knees, feet to capture pose/movement.
@@ -29,5 +29,7 @@ ${PHOTO_BODY}
 ${lessonBlock()}
 
 ${svgCraftBlock()}
+
+${lineArtBlock()}
 
 ${exampleBlock()}`;

@@ -156,3 +156,10 @@ User pasted Safari console: `hot-update.json ... access control checks` + Fast R
   worker that served the old shell removes itself on next visit. 3 SwRegister tests + 1 shell test.
 - Verification: 194/194 tests, `tsc` 0, coverage 89.8%/80.6%/90.4%, build OK. User must restart dev
   server once (`npm run dev -- -p 3000`) — then HMR works and the stale worker is gone.
+
+## Session 10 — OmniSVG limits removed per user order
+User: count/token caps from OmniSVG are useless — remove. Kept: coordinate precision, angles, craft.
+- Deleted MAX_STEPS/MAX_STROKES_PER_STEP + both 'bloat' findings + compactness prompt rule.
+- Inverted test now locks the new behavior (25 steps → no bloat finding); clean-audit fixture aligned
+  to strokes-only; precision rule reworded (integers preferred, max 2 decimals).
+- Verification: 208/208 tests, `tsc` 0, coverage 90.0% lines / 80.4% branches / 91.5% funcs, build OK.

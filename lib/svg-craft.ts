@@ -17,12 +17,24 @@ export const SVG_CRAFT_RULES: string[] = [
   'Max 4 flat fill colors; no micro-details below 1/64 of the canvas (8 units on 512)',
   'Optical corrections: round/pointed forms overshoot straight lines by 1-3%, horizontals a touch thinner, optical center slightly high',
   'Few shading tones (highlight/mid/shadow); every decision must survive small sizes — no hairlines',
+  'Short coordinate strings: integers preferred, max 2 decimals (exact and light geometry)',
 ];
 
 export function svgCraftBlock(): string {
+  const lines = SVG_CRAFT_RULES.map((r, i) => `${i + 1}. ${r}.`);
+  return ['SVG CRAFT (distilled logo discipline — draw like a vector professional, not a sketch bot):', ...lines].join('\n');
+}
+
+/**
+ * LINE ART mode (Wikimedia Anime_Girl reference + Surbhi write-on film):
+ * strokes-only pictures, one <g> per part drawing itself in sequence.
+ */
+export function lineArtBlock(): string {
   return [
-    'SVG CRAFT (distilled logo discipline — draw like a vector professional, not a sketch bot):',
-    ...SVG_CRAFT_RULES.map((r, i) => `${i + 1}. ${r}.`),
+    'LINE ART (strict): NO filled shapes — every form as pencil/ink strokes only; shading ONLY with B-family hatching strokes, never fills.',
+    'One <g> per part (actor_<name>, hair, face, backdrop...): finish each <g> fully before starting the next.',
+    'Unique step ids sequence the film like Surbhi path ids with delays — the viewer watches each <g> draw itself.',
+    'Retrace outer contours sharp and confident like the Anime_Girl reference; hair masses behind eyes, brows over hair.',
   ].join('\n');
 }
 
@@ -47,6 +59,10 @@ const MISS_HI = 3;
 
 function countAnchors(d: string): number {
   return (d.match(/-?\d*\.?\d+/g) ?? []).length / 2;
+}
+
+function hasOverPrecise(d: string): boolean {
+  return /\d+\.\d{3,}/.test(d);
 }
 
 /** Distance to the nearest clean angle with 90° symmetry + 45° mirror (75° counts as 15°). */
@@ -80,6 +96,9 @@ export function auditCraft(script: DrawingScript): CraftAudit {
       if (anchors > MAX_ANCHORS_PER_PATH) {
         findings.push({ rule: 'anchors', detail: `step ${s.id}: ${anchors} anchors in one path (lumpy-curve risk)` });
       }
+      if (hasOverPrecise(d)) {
+        findings.push({ rule: 'precision', detail: `step ${s.id}: 3+ decimals (integers preferred, max 2)` });
+      }
       let pts: Point[] | null = null;
       try {
         pts = svgPathToPoints(d);
@@ -103,6 +122,11 @@ export function auditCraft(script: DrawingScript): CraftAudit {
       totalAnchors += anchors;
       if (anchors > MAX_ANCHORS_PER_PATH) {
         findings.push({ rule: 'anchors', detail: `step ${s.id}: ${anchors} anchors in one fill (simplify)` });
+      }
+      // line-art signal (not a gate): flat fills break the Surbhi write-on look — hatch instead
+      findings.push({ rule: 'fills', detail: `step ${s.id}: flat fill — line-art mode prefers hatching strokes` });
+      if (hasOverPrecise(d)) {
+        findings.push({ rule: 'precision', detail: `step ${s.id}: 3+ decimals in fill (max 2)` });
       }
       let pts: Point[] | null = null;
       try {

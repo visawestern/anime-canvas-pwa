@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SVG_CRAFT_RULES, svgCraftBlock, auditCraft } from '@/lib/svg-craft';
+import { SVG_CRAFT_RULES, svgCraftBlock, lineArtBlock, auditCraft } from '@/lib/svg-craft';
 import { KIND_PROMPTS } from '@/lib/generate-prompts';
 import { ANIME_DIRECTOR_PROMPT } from '@/lib/anime-director-prompt';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
@@ -37,6 +37,32 @@ describe('svgCraftBlock (distilled logo-craft)', () => {
     expect(b).toMatch(/512/);
   });
 
+  it('encourages short coordinate strings (integers preferred)', () => {
+    expect(svgCraftBlock()).toMatch(/short coordinate|integers preferred/i);
+  });
+});
+
+describe('lineArtBlock (Anime_Girl reference + Surbhi write-on)', () => {
+  it('demands strokes-only art, one <g> per part sequenced like Surbhi ids', () => {
+    const b = lineArtBlock();
+    expect(b).toContain('LINE ART');
+    expect(b).toMatch(/no fill/i);
+    expect(b).toMatch(/<g>|Surbhi/i);
+  });
+
+  it('is wired into every generation prompt', () => {
+    for (const k of ['character', 'item', 'location', 'scene'] as const) {
+      expect(KIND_PROMPTS[k]).toContain('LINE ART');
+    }
+    expect(ANIME_DIRECTOR_PROMPT).toContain('LINE ART');
+  });
+
+  it('flags flat fills as a line-art signal (score, not gate)', () => {
+    const a = auditCraft(scriptWith({ fills: [{ path: 'M0 0 L100 0 L100 100 Z', color: '#fff' }] }));
+    expect(txt(a)).toMatch(/line-art|hatch/i);
+    expect(a.score).toBeLessThan(100);
+  });
+
   it('is wired into every generation prompt', () => {
     for (const k of ['character', 'item', 'location', 'scene'] as const) {
       expect(KIND_PROMPTS[k]).toContain('SVG CRAFT');
@@ -46,10 +72,8 @@ describe('svgCraftBlock (distilled logo-craft)', () => {
 });
 
 describe('auditCraft (svg_audit.py adapted to DrawingScript)', () => {
-  it('scores a clean script 100 with no findings', () => {
-    const a = auditCraft(
-      scriptWith({ fills: [{ path: 'M0 0 L100 0 L100 100 Z', color: '#fff' }] }),
-    );
+  it('scores a clean strokes-only script 100 with no findings', () => {
+    const a = auditCraft(scriptWith({}));
     expect(a.score).toBe(100);
     expect(a.findings).toEqual([]);
   });
@@ -94,5 +118,28 @@ describe('auditCraft (svg_audit.py adapted to DrawingScript)', () => {
     const text = txt(a);
     expect(text).toMatch(/close/i);
     expect(text).toMatch(/parse|unparseable/i);
+  });
+
+  it('imposes no step/stroke limits (long films are welcome)', () => {
+    const many = {
+      style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+      layers: ['a'],
+      steps: Array.from({ length: 25 }, (_, i) => ({
+        id: i + 1,
+        kind: 'pencil',
+        layer: 'a',
+        strokes: [{ path: 'M0 0 L1 1', w: 1.2, o: 0.5 }],
+      })),
+      rig: { bones: [], morphTargets: [] },
+      anim: { fps: 12, loop: 'x', dirtyLayers: [] },
+    } as unknown as DrawingScript;
+    expect(txt(auditCraft(many))).not.toMatch(/bloat|compact/i);
+  });
+
+  it('flags over-precise coordinates (LLM4SVG note: integers preferred, max 2 decimals)', () => {
+    const a = auditCraft(scriptWith({ strokes: [{ path: 'M0.123 0.456 L10 10', w: 1.2, o: 0.5 }] }));
+    expect(txt(a)).toMatch(/precision|decimal/i);
+    const clean = auditCraft(scriptWith({ strokes: [{ path: 'M0.12 0.45 L10 10', w: 1.2, o: 0.5 }] }));
+    expect(txt(clean)).not.toMatch(/precision|decimal/i);
   });
 });

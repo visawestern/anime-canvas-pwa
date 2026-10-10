@@ -115,3 +115,16 @@ User screenshot: unstyled old markup (Times, blue links, old nav) — root cause
 - Live: clean dev restart, all 5 pages 200 with admin-shell, layout.css 200 with theme classes,
   sw.js serves v3. Stale `.next` 500 incident resolved via clean restart (never build over running dev).
 - Verification: 156/156 tests, `tsc` 0, `next build` OK. Server handed to user terminal.
+
+## Session 7 — live renderer crash (unsupported SVG command: 30)
+User screenshot: generation saved ("Рин, 11 шагов") but preview died with
+`unsupported SVG command in DrawingScript path: 30`. Root cause: old parser knew only M/L/C/Z;
+live evidence (/tmp/live-*.json) shows the model emits A/Q/S too — skipped letters misaligned tokens
+until a number landed in command slot. Duplicate "Рин" entries came from re-clicking after the crash.
+- `svgPathToPoints` rewritten to full SVG: M/L/H/V/C/S/Q/T/A/Z, relative variants, implicit lineto,
+  smooth reflection (S/T), arc endpoint parameterization (F.6.5). True garbage still throws honestly.
+  8 parser tests incl. live A/Q/S shapes.
+- Film resilience: every parse site wrapped — broken strokes skip with `onSkip` report, film finishes;
+  CanvasStage + EntityPreview append "Пропущено битых штрихов: N" to status. 1 playback test.
+- Verification: 163/163 tests, `tsc` 0, coverage 89.7% lines / 80.1% branches / 90% funcs, build OK.
+  Pushed 5c4a7ff. User must restart their own dev server to pick it up (`npm run dev -- -p 3000`).

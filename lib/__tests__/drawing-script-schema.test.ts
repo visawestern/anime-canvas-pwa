@@ -43,4 +43,14 @@ describe('DrawingScriptSchema', () => {
       DrawingScriptSchema.parse({ ...validScript, anim: { fps: 60, loop: 'x', dirtyLayers: [] } }),
     ).toThrow();
   });
+
+  it('accepts optional part names (decomposition units), omitting stays valid', () => {
+    const withParts = {
+      ...validScript,
+      steps: validScript.steps.map((s, i) => ({ ...s, part: i === 0 ? 'handle' : 'blade' })),
+    };
+    const parsed = DrawingScriptSchema.parse(withParts);
+    expect(parsed.steps[0].part).toBe('handle');
+    expect(() => DrawingScriptSchema.parse(validScript)).not.toThrow();
+  });
 });

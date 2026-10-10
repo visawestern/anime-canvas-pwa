@@ -29,13 +29,27 @@ export function svgCraftBlock(): string {
  * LINE ART + COLOR (Wikimedia Anime_Girl reference + Surbhi write-on film, two phases):
  * Phase 1 draws strokes only (one <g> per part, sequenced by unique step ids);
  * Phase 2 fades Gemma's flat colors in (fillin) per <g> — fills carry CORRECT final colors.
- */
-export function lineArtBlock(): string {
+ */export function lineArtBlock(): string {
   return [
     'LINE ART + COLOR in two phases (Anime_Girl reference + Surbhi write-on):',
     'Phase 1 — pencil write-on, strokes only: one <g> per part (actor_<name>, hair, face...), finish each <g> fully before the next; unique step ids sequence the film like Surbhi path ids with delays.',
     'Phase 2 — fillin: every fill carries its CORRECT final flat color and fades in after its <g> outlines are drawn; shading ONLY with B-family hatching strokes plus these flat fills, never gradients.',
     'Retrace outer contours sharp and confident like the Anime_Girl reference; hair masses behind eyes, brows over hair.',
+  ].join('\n');
+}
+
+/**
+ * DECOMPOSE every subject into named closed-contour parts in z-order (back-to-front):
+ * sword = handle, blade, engraving; scene = sky, ground, buildings, roads, actors.
+ * Parts become separately generatable, movable and recolorable units (thousands of combos).
+ */
+export function partsBlock(): string {
+  return [
+    'DECOMPOSE into named parts, one <g> per part, back-to-front z-order:',
+    '- Characters/items: split into components (sword: handle FIRST, then blade, then engraving/hieroglyphs on the blade; figure: head, hair, torso, arms, outfit) — each component its own closed contours, combinable across generations.',
+    '- Scenes: landscape FIRST (sky, distant ground), then midground (buildings, trees), then roads/paths, then actors and items LAST (front). Never draw front elements before their background.',
+    '- Every step sets part: "handle" | "blade" | "sky" | "actor_<name>"... — parts draw in document order = z-order (first painted = rearmost).',
+    '- Closed contours: outlines return to start (Z); fills closed; each part self-contained with no stray lines into other parts.',
   ].join('\n');
 }
 

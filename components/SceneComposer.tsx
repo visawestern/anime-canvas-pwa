@@ -5,12 +5,14 @@ import { EntityPreview } from '@/components/EntityPreview';
 import {
   listEntities,
   findEntityByName,
+  getEntity,
   saveEntity,
   forkScene,
   type Entity,
 } from '@/lib/entities';
 import { validateSceneLayers } from '@/lib/lesson-pipeline';
 import { auditCraft } from '@/lib/svg-craft';
+import { diffParts } from '@/lib/svg-film';
 import { CastPicker } from '@/components/CastPicker';
 import { LocationPicker } from '@/components/LocationPicker';
 import {
@@ -142,11 +144,17 @@ export function SceneComposer() {
       }
       setMissing(null);
       setStatus('Все на месте. Gemma собирает сцену…');
-      const scene = await generateScene(req, undefined, pendingParent?.id, remixBase ? { baseBrief: REFERENCE_BRIEF, basedOn: remixBase } : undefined);
+      const parentId = pendingParent?.id;
+      const parent = parentId ? await getEntity(parentId) : undefined;
+      const scene = await generateScene(req, undefined, parentId, remixBase ? { baseBrief: REFERENCE_BRIEF, basedOn: remixBase } : undefined);
       setPendingParent(null);
       setRemixBase(null);
       setPreview(scene.script);
-      setStatus(`Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.`);
+      const changed = parent && parent.kind === 'scene' ? diffParts(parent.script, scene.script) : [];
+      setStatus(
+        `Сцена готова: ${scene.name}. Качество линий: ${auditCraft(scene.script).score}/100.` +
+          (changed.length > 0 ? ` Изменено частей: ${changed.length} (${changed.join(', ')}) — в следующем кадре перерисуются только они.` : ''),
+      );
       await refresh();
     } catch (e) {
       setStatus(`Ошибка: ${(e as Error).message}`);

@@ -7,8 +7,8 @@ const script = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
   layers: ['construction', 'ink'],
   steps: [
-    { id: 1, kind: 'pencil', layer: 'construction', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
-    { id: 2, kind: 'ink', layer: 'ink', strokes: [{ path: 'M0 0 L10 10', w: 2.4, o: 1 }] },
+    { id: 1, kind: 'pencil', layer: 'construction', part: 'каркас', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
+    { id: 2, kind: 'ink', layer: 'ink', part: 'контур', strokes: [{ path: 'M0 0 L10 10', w: 2.4, o: 1 }] },
   ],
   rig: { bones: [], morphTargets: [] },
   anim: { fps: 12, loop: 'idle', dirtyLayers: [] },
@@ -29,10 +29,10 @@ describe('SvgFilm (reference-style write-on film)', () => {
       expect(p.getAttribute('style')).toMatch(/--dl:/);
     });
     expect(container.querySelectorAll('svg > g').length).toBe(2);
-    const layers = within(screen.getByTestId('film-layers'));
-    expect(layers.getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.getByTestId('film-layers').textContent).toContain('construction');
-    expect(screen.getByTestId('film-layers').textContent).toContain('ink');
+    const parts = within(screen.getByTestId('film-parts'));
+    expect(parts.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByTestId('film-parts').textContent).toContain('каркас');
+    expect(screen.getByTestId('film-parts').textContent).toContain('контур');
   });
 
   it('replay and speed controls work without a real animation engine', () => {
@@ -43,14 +43,23 @@ describe('SvgFilm (reference-style write-on film)', () => {
     expect(screen.getByRole('button', { name: /×5/i }).className).toMatch(/on/);
   });
 
-  it('nudge buttons move one layer without touching others', () => {
+  it('nudge buttons move one part without touching others', () => {
     const { container } = render(<SvgFilm script={script} />);
-    const rows = within(screen.getByTestId('film-layers')).getAllByRole('listitem');
-    const inkRow = rows.find((li) => li.textContent?.startsWith('ink '))!;
+    const rows = within(screen.getByTestId('film-parts')).getAllByRole('listitem');
+    const inkRow = rows.find((li) => li.textContent?.includes('контур'))!;
     fireEvent.click(within(inkRow).getByRole('button', { name: /вправо/i }));
     const html = container.innerHTML;
-    expect(html).toContain('layer-ink" transform="translate(8 0)"');
-    expect(html).not.toContain('layer-construction" transform');
+    expect(html).toContain('part-ink-kontur');
+    expect(html).toContain('transform="translate(8 0)"');
+    expect(html).not.toContain('part-construction-karkas" data-part="каркас" transform');
+  });
+
+  it('selecting a part paints all its lines red, deselect restores', () => {
+    const { container } = render(<SvgFilm script={script} />);
+    fireEvent.click(screen.getByRole('button', { name: 'выбрать контур' }));
+    expect(container.innerHTML).toContain('stroke="#e11d48"');
+    fireEvent.click(screen.getByRole('button', { name: 'выбрать контур' }));
+    expect(container.innerHTML).not.toContain('#e11d48');
   });
 
   it('shows the color phase row without nudge buttons', () => {

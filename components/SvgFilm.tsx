@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { scriptToSvg, shiftLayerMarkup, verifyFilm } from '@/lib/svg-film';
+import { scriptToSvg, shiftPartMarkup, highlightPartMarkup, verifyFilm } from '@/lib/svg-film';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
 
 const NUDGE = 8;
@@ -12,24 +12,26 @@ function fmt(total: number): string {
 
 /**
  * Reference-style write-on film: retained SVG DOM, one <g> per layer drawing
- * itself in sequence (pathLength=1 + --dl/--d). Parts move via <g> transform —
- * no redraw. Progress bar, clock, speed, replay, per-layer nudge.
+ * itself in sequence (pathLength=1 + --dl/--d). Parts panel (right side, z-order):
+ * select paints every line of the part red, arrows move it with zero redraw.
  */
 export function SvgFilm({ script }: { script: DrawingScript }) {
   const [nonce, setNonce] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [moves, setMoves] = useState<Record<string, { dx: number; dy: number }>>({});
+  const [selected, setSelected] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const film = useMemo(() => scriptToSvg(script), [script]);
   const svg = useMemo(() => {
     let out = film.svg;
-    for (const [layer, m] of Object.entries(moves)) {
-      if (m.dx !== 0 || m.dy !== 0) out = shiftLayerMarkup(out, `layer-${layer}`, m.dx, m.dy);
+    for (const [gid, m] of Object.entries(moves)) {
+      if (m.dx !== 0 || m.dy !== 0) out = shiftPartMarkup(out, gid, m.dx, m.dy);
     }
+    if (selected) out = highlightPartMarkup(out, selected);
     return out;
-  }, [film, moves]);
+  }, [film, moves, selected]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -61,11 +63,12 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
     };
   }, [film.total, speed, nonce]);
 
-  const nudge = (layer: string, dx: number, dy: number) =>
-    setMoves((prev) => ({ ...prev, [layer]: { dx: (prev[layer]?.dx ?? 0) + dx, dy: (prev[layer]?.dy ?? 0) + dy } }));
+  const nudge = (gid: string, dx: number, dy: number) =>
+    setMoves((prev) => ({ ...prev, [gid]: { dx: (prev[gid]?.dx ?? 0) + dx, dy: (prev[gid]?.dy ?? 0) + dy } }));
 
-  const current = [...film.schedule].reverse().find((s) => elapsed >= s.t)?.layer ?? null;
+  const doneUpTo = (t: number) => elapsed >= film.total || elapsed >= t;
   const check = useMemo(() => verifyFilm(svg), [svg]);
+  const fillsEntry = film.schedule.find((s) => s.kind === 'fills');
 
   return (
     <div className="card" aria-label="SVG-плёнка">
@@ -91,35 +94,48 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
           </button>
         ))}
       </div>
-      <ul className="log" data-testid="film-layers">
-        {film.schedule.map((s) =>
-          s.kind === 'fills' ? (
-            <li key="__fills">
-              <span>
-                {s.label} <span className="badge">фаза 2</span>
-              </span>
-            </li>
-          ) : (
-            <li key={s.layer} className={current === s.layer ? 'on' : ''}>
-              <span>
-                {s.layer} <span className="badge">{s.label}</span>
+      <h3>Элементы (порядок наложения: первый рисуется нижним)</h3>
+      <ul className="log" data-testid="film-parts">
+        {film.parts.map((p, i) => {
+          const drawn = doneUpTo(p.t);
+          const isSel = selected === p.id;
+          return (
+            <li key={p.id} className={isSel ? 'on' : ''}>
+              <button
+                type="button"
+                aria-label={`выбрать ${p.part}`}
+                aria-pressed={isSel}
+                onClick={() => setSelected(isSel ? null : p.id)}
+              >
+                {drawn ? '● ' : '○ '}
+                {p.part}
+              </button>{' '}
+              <span className="badge">
+                z#{i + 1} · {p.paths} лин.
               </span>{' '}
               <span className="btn-row">
-                <button type="button" aria-label={`влево ${s.layer}`} onClick={() => nudge(s.layer, -NUDGE, 0)}>
+                <button type="button" aria-label={`влево ${p.part}`} onClick={() => nudge(p.id, -NUDGE, 0)}>
                   ◀
                 </button>
-                <button type="button" aria-label={`вправо ${s.layer}`} onClick={() => nudge(s.layer, NUDGE, 0)}>
+                <button type="button" aria-label={`вправо ${p.part}`} onClick={() => nudge(p.id, NUDGE, 0)}>
                   ▶
                 </button>
-                <button type="button" aria-label={`вверх ${s.layer}`} onClick={() => nudge(s.layer, 0, -NUDGE)}>
+                <button type="button" aria-label={`вверх ${p.part}`} onClick={() => nudge(p.id, 0, -NUDGE)}>
                   ▲
                 </button>
-                <button type="button" aria-label={`вниз ${s.layer}`} onClick={() => nudge(s.layer, 0, NUDGE)}>
+                <button type="button" aria-label={`вниз ${p.part}`} onClick={() => nudge(p.id, 0, NUDGE)}>
                   ▼
                 </button>
               </span>
             </li>
-          ),
+          );
+        })}
+        {fillsEntry && (
+          <li key="__fills">
+            <span>
+              {fillsEntry.label} <span className="badge">фаза 2</span>
+            </span>
+          </li>
         )}
       </ul>
     </div>

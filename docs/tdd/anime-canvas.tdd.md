@@ -193,3 +193,16 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
   off-frame issues, empty film flag. `SvgFilm` shows the verdict line (`film-check` testid).
   4 verification tests + 1 component test.
 - Verification: 231/231 tests, `tsc` 0, coverage 90.7%/80.5%/90.7%, build OK.
+
+## Session 14 — parts decomposition, z-order panel, frame diff (user order)
+- Schema: optional `step.part` (backward compatible).
+- Prompts: PARTS_BLOCK in BASE + director (closed contours per component, back-to-front z-order,
+  landscape→buildings→roads→actors, part naming).
+- `scriptToSvg`: nested `<g data-part>` groups (readable latin ids via transliteration + collision
+  suffix), `parts[]` schedule (z-order = paint order), shiftPartMarkup, highlightPartMarkup (red),
+  diffParts (geometry compare minus labels; added/removed included).
+- `verifyFilm` rewritten for nested groups (part blocks first, then plain layers).
+- `SvgFilm`: parts panel (z# badges, select→red toggle, per-part nudge, progressive reveal, fills
+  row w/o buttons); layer nudge replaced by part nudge.
+- SceneComposer "Новая версия": diff vs parent in status (only changed parts re-saved next frame).
+- Verification: 247/247 tests, `tsc` 0, coverage 91% lines / 81.2% branches, build OK.

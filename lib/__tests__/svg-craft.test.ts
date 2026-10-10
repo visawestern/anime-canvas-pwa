@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SVG_CRAFT_RULES, svgCraftBlock, lineArtBlock, auditCraft } from '@/lib/svg-craft';
+import { SVG_CRAFT_RULES, svgCraftBlock, lineArtBlock, partsBlock, auditCraft } from '@/lib/svg-craft';
 import { KIND_PROMPTS } from '@/lib/generate-prompts';
 import { ANIME_DIRECTOR_PROMPT } from '@/lib/anime-director-prompt';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
@@ -42,8 +42,7 @@ describe('svgCraftBlock (distilled logo-craft)', () => {
   });
 });
 
-describe('lineArtBlock (Anime_Girl reference + Surbhi write-on)', () => {
-  it('demands two phases (write-on per <g>, then Gemma color fillin) like Surbhi ids', () => {
+describe('lineArtBlock (Anime_Girl reference + Surbhi write-on)', () => {  it('demands two phases (write-on per <g>, then Gemma color fillin) like Surbhi ids', () => {
     const b = lineArtBlock();
     expect(b).toContain('LINE ART');
     expect(b).toMatch(/phase 1|phase 2/i);
@@ -142,5 +141,21 @@ describe('auditCraft (svg_audit.py adapted to DrawingScript)', () => {
     expect(txt(a)).toMatch(/precision|decimal/i);
     const clean = auditCraft(scriptWith({ strokes: [{ path: 'M0.12 0.45 L10 10', w: 1.2, o: 0.5 }] }));
     expect(txt(clean)).not.toMatch(/precision|decimal/i);
+  });
+});
+
+describe('partsBlock (decomposition into closed-contour parts, z-ordered)', () => {
+  it('demands one closed-contour part per component, back-to-front', () => {
+    expect(partsBlock()).toContain('DECOMPOSE');
+    expect(partsBlock()).toMatch(/closed contour/i);
+    expect(partsBlock()).toMatch(/z-order|back-to-front/i);
+    expect(partsBlock()).toMatch(/landscape.*building.*road|sky.*ground/i);
+  });
+
+  it('is wired into every generation prompt', () => {
+    for (const k of ['character', 'item', 'location', 'scene'] as const) {
+      expect(KIND_PROMPTS[k]).toContain('DECOMPOSE');
+    }
+    expect(ANIME_DIRECTOR_PROMPT).toContain('DECOMPOSE');
   });
 });

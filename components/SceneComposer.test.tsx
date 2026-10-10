@@ -112,4 +112,19 @@ describe('SceneComposer (cast + missing proposals + paused queue)', () => {
     fireEvent.click(within(li).getByRole('button', { name: /форк/i }));
     await waitFor(() => expect(screen.getByText(new RegExp(s.id))).toBeInTheDocument());
   });
+
+  it('new version reports changed parts for the next frame (diff, not full redraw)', async () => {
+    const parentScript = {
+      ...script,
+      steps: [{ id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L99 99' }] }],
+    } as never;
+    await saveEntity({ kind: 'scene', name: 'Родитель', script: parentScript });
+    render(<SceneComposer />);
+    const span = (await screen.findAllByText(/Родитель/)).find((el) => el.tagName === 'SPAN')!;
+    const li = span.closest('li')!;
+    fireEvent.click(within(li).getByRole('button', { name: /новая версия/i }));
+    fireEvent.click(screen.getByRole('button', { name: /собрать сцену/i }));
+    await waitFor(() => expect(screen.getByText(/сцена готова/i)).toBeInTheDocument());
+    expect(screen.getByText(/изменено частей/i)).toBeInTheDocument();
+  });
 });

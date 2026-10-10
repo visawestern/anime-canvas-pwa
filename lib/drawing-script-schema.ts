@@ -17,6 +17,8 @@ const StepSchema = z.object({
   id: z.number().int().positive(),
   kind: StepKindSchema,
   layer: z.string().min(1),
+  /** decomposition unit (sword handle/blade/engraving, scene sky/road/actor): separate closed contours */
+  part: z.string().min(1).optional(),
   label: z.string().optional(),
   strokes: z.array(StrokeSchema).optional(),
   fills: z.array(FillSchema).optional(),

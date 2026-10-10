@@ -5,6 +5,7 @@ import { DrawingScriptSchema, type DrawingScript } from './drawing-script-schema
 import { ANIME_DIRECTOR_PROMPT } from './anime-director-prompt';
 import { normalizeScript } from './script-normalize';
 import { summarizeIssues, validatePipeline } from './lesson-pipeline';
+import { buildDecomposePrompt, ElementListSchema, type ElementList } from './element-composer';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud';
@@ -28,6 +29,37 @@ async function postChat(model: string, messages: ChatMessage[]): Promise<string>
 }
 
 /**
+ * Generic JSON chat with model repair (up to MAX_TRIES). Transport errors throw
+ * immediately; content problems (bad JSON / failed parse) trigger a repair round
+ * carrying the concrete error list. Persistent failure throws a bounded summary.
+ */
+async function requestJson<T>(
+  label: string,
+  model: string,
+  initial: ChatMessage[],
+  parse: (raw: unknown) => T,
+): Promise<T> {
+  const messages = [...initial];
+  let lastErr = 'unknown error';
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    const content = await postChat(model, messages);
+    try {
+      return parse(parseModelJson(content));
+    } catch (e) {
+      lastErr = e instanceof ZodError ? `schema: ${summarizeIssues(e.issues)}` : (e as Error).message;
+      messages.push(
+        { role: 'assistant', content },
+        {
+          role: 'user',
+          content: `Your previous reply was invalid (attempt ${attempt}/${MAX_TRIES}). Fix these errors and reply with JSON ONLY in the same shape:\n${lastErr}`,
+        },
+      );
+    }
+  }
+  throw new Error(`model failed after ${MAX_TRIES} attempts: ${lastErr}`);
+}
+
+/**
  * Normalize -> validate, repairing with the model up to MAX_TRIES.
  * Every repair asks for JSON ONLY plus the concrete error list; persistent failure
  * throws a bounded summary (never the full 70-issue dump).
@@ -38,34 +70,18 @@ async function requestWithRepair(
   initial: ChatMessage[],
   validate: (s: DrawingScript) => string[] = () => [],
 ): Promise<DrawingScript> {
-  const messages = [...initial];
-  let lastErr = 'unknown error';
-  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
-    const content = await postChat(model, messages);
-    try {
-      const raw = parseModelJson(content);
-      const { script, warnings } = normalizeScript(raw);
-      for (const w of warnings) console.warn(`[${label}] normalize: ${w}`);
-      const parsed = DrawingScriptSchema.parse(script);
-      const violations = validate(parsed);
-      if (violations.length > 0) {
-        const shown = violations.slice(0, 5).join('; ');
-        const more = violations.length > 5 ? ` ... and ${violations.length - 5} more` : '';
-        throw new Error(`lesson pipeline violated: ${shown}${more}`);
-      }
-      return parsed;
-    } catch (e) {
-      lastErr = e instanceof ZodError ? `schema: ${summarizeIssues(e.issues)}` : (e as Error).message;
-      messages.push(
-        { role: 'assistant', content },
-        {
-          role: 'user',
-          content: `Your previous reply was invalid (attempt ${attempt}/${MAX_TRIES}). Fix these errors and reply with JSON ONLY in the same DrawingScript shape:\n${lastErr}`,
-        },
-      );
+  return requestJson(label, model, initial, (raw) => {
+    const { script, warnings } = normalizeScript(raw);
+    for (const w of warnings) console.warn(`[${label}] normalize: ${w}`);
+    const parsed = DrawingScriptSchema.parse(script);
+    const violations = validate(parsed);
+    if (violations.length > 0) {
+      const shown = violations.slice(0, 5).join('; ');
+      const more = violations.length > 5 ? ` ... and ${violations.length - 5} more` : '';
+      throw new Error(`lesson pipeline violated: ${shown}${more}`);
     }
-  }
-  throw new Error(`model failed after ${MAX_TRIES} attempts: ${lastErr}`);
+    return parsed;
+  });
 }
 
 /** Server-only: text prompt -> DrawingScript for character/item/location/scene. Never fakes. */
@@ -93,4 +109,19 @@ export async function requestDrawingScript(args: {
     model: args.model || OLLAMA_MODEL,
   });
   return requestWithRepair('draw:photo', body.model, body.messages, validatePipeline);
+}
+
+export type DecomposeKind = 'scene' | 'item';
+
+/** Server-only: split a prompt into separately drawable elements (one request per part). */
+export async function requestElementList(args: {
+  kind: DecomposeKind;
+  prompt: string;
+  model?: string;
+}): Promise<ElementList> {
+  const body = buildTextRequest({
+    prompt: buildDecomposePrompt(args.kind, args.prompt),
+    model: args.model || OLLAMA_MODEL,
+  });
+  return requestJson(`decompose:${args.kind}`, body.model, body.messages, (raw) => ElementListSchema.parse(raw));
 }

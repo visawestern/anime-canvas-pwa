@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scriptToSvg, shiftLayerMarkup, verifyFilm } from '@/lib/svg-film';
+import { scriptToSvg, shiftLayerMarkup, shiftPartMarkup, highlightPartMarkup, verifyFilm, diffParts } from '@/lib/svg-film';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
 
 const script = {
@@ -120,6 +120,77 @@ describe('shiftLayerMarkup (move a part without redrawing)', () => {
   it('throws on unknown layer (no silent no-op)', () => {
     const { svg } = scriptToSvg(script);
     expect(() => shiftLayerMarkup(svg, 'layer-nope', 1, 1)).toThrow(/nope/);
+  });
+});
+
+describe('parts (nested <g data-part>, z-ordered)', () => {
+  const parted = {
+    style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+    layers: ['a'],
+    steps: [
+      { id: 1, kind: 'pencil', layer: 'a', part: 'handle', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
+      { id: 2, kind: 'ink', layer: 'a', part: 'blade', strokes: [{ path: 'M0 0 L20 0', w: 2.4, o: 1 }] },
+      { id: 3, kind: 'ink', layer: 'a', strokes: [{ path: 'M0 0 L5 5', w: 2.4, o: 1 }] },
+    ],
+    rig: { bones: [], morphTargets: [] },
+    anim: { fps: 12, loop: 'x', dirtyLayers: [] },
+  } as unknown as DrawingScript;
+
+  it('nests one <g data-part> per part inside its layer (missing part falls back to layer)', () => {
+    const { svg } = scriptToSvg(parted);
+    expect(svg).toContain('<g id="part-a-handle" data-part="handle">');
+    expect(svg).toContain('<g id="part-a-blade" data-part="blade">');
+    expect(svg).toContain('<g id="part-a-a" data-part="a">');
+  });
+
+  it('exposes parts in z-order with counts (document order = paint order)', () => {
+    const { parts } = scriptToSvg(parted);
+    expect(parts.map((p) => p.part)).toEqual(['handle', 'blade', 'a']);
+    expect(parts[0]).toMatchObject({ layer: 'a', paths: 1 });
+  });
+
+  it('shiftPartMarkup moves one part, others untouched; unknown part throws', () => {
+    const { svg } = scriptToSvg(parted);
+    const moved = shiftPartMarkup(svg, 'part-a-blade', 4, 4);
+    expect(moved).toContain('<g id="part-a-blade" data-part="blade" transform="translate(4 4)">');
+    expect(moved).not.toContain('part-a-handle" transform');
+    expect(() => shiftPartMarkup(svg, 'part-a-nope', 1, 1)).toThrow(/nope/);
+  });
+
+  it('highlightPartMarkup paints every line of one part red, others untouched', () => {
+    const { svg } = scriptToSvg(parted);
+    const red = highlightPartMarkup(svg, 'part-a-blade');
+    const blade = /<g id="part-a-blade"[^>]*>([\s\S]*?)<\/g>/.exec(red)![1];
+    expect(blade.match(/stroke="#e11d48"/g)?.length).toBe(1);
+    const handle = /<g id="part-a-handle"[^>]*>([\s\S]*?)<\/g>/.exec(red)![1];
+    expect(handle).not.toContain('#e11d48');
+    expect(() => highlightPartMarkup(svg, 'part-a-nope')).toThrow(/nope/);
+  });
+});
+
+describe('diffParts (next frame saves only changed objects)', () => {
+  const base = {
+    style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
+    layers: ['a'],
+    steps: [
+      { id: 1, kind: 'pencil', layer: 'a', part: 'handle', strokes: [{ path: 'M0 0 L10 10', w: 1.2, o: 0.5 }] },
+      { id: 2, kind: 'ink', layer: 'a', part: 'blade', strokes: [{ path: 'M0 0 L20 0', w: 2.4, o: 1 }] },
+    ],
+    rig: { bones: [], morphTargets: [] },
+    anim: { fps: 12, loop: 'x', dirtyLayers: [] },
+  } as unknown as DrawingScript;
+
+  it('lists only parts whose geometry changed (added/removed count too)', () => {
+    const next = {
+      ...base,
+      steps: [
+        base.steps[0],
+        { id: 2, kind: 'ink', layer: 'a', part: 'blade', strokes: [{ path: 'M0 0 L30 0', w: 2.4, o: 1 }] },
+        { id: 3, kind: 'ink', layer: 'a', part: 'engraving', strokes: [{ path: 'M1 1 L2 2', w: 1.4, o: 0.8 }] },
+      ],
+    } as unknown as DrawingScript;
+    expect(diffParts(base, next)).toEqual(['blade', 'engraving']);
+    expect(diffParts(base, base)).toEqual([]);
   });
 });
 

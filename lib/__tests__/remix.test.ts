@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-vi.mock('@/lib/rasterize', () => ({
-  svgToPngBase64: vi.fn(async () => 'AAA'),
-}));
-
 import { remixReferencePiece } from '@/lib/remix';
-import { svgToPngBase64 } from '@/lib/rasterize';
 
 const script = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
@@ -19,32 +13,35 @@ const script = {
   anim: { fps: 12, loop: 'x', dirtyLayers: [] },
 };
 
-describe('remixReferencePiece (reference auto-substituted into vision)', () => {
+const pieceSvg = '<svg viewBox="0 0 100 50"><g id="blade"><path d="M0 0 L90 10"/></g></svg>';
+
+describe('remixReferencePiece (SVG template as text, no raster)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(svgToPngBase64).mockResolvedValue('AAA');
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => script })) as never);
   });
 
-  it('rasterizes the piece and sends it to the vision endpoint with the brief', async () => {
+  it('sends the piece markup + brief + changes as one text prompt', async () => {
     const out = await remixReferencePiece({
-      svgText: '<svg viewBox="0 0 10 10"></svg>',
+      svgText: pieceSvg,
       name: 'katana-01',
-      extraPrompt: 'сделать рукоять красной',
+      extraPrompt: 'красная рукоять',
     });
-    expect(out.imageBase64).toBe('AAA');
     expect(out.script.steps).toHaveLength(3);
+    expect(out.svgText).toBe(pieceSvg);
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
-    expect(body.imageBase64).toBe('AAA');
+    expect(body.kind).toBe('item');
     expect(body.prompt).toContain('katana-01');
-    expect(body.prompt).toContain('красной');
+    expect(body.prompt).toContain('красная рукоять');
+    expect(body.prompt).toContain('<svg');
+    expect(body.prompt).toContain('M0 0 L90 10');
+    expect(body.prompt).toMatch(/tsuka|brief|эталон/i);
   });
 
-  it('never calls the model when rasterization fails', async () => {
-    vi.mocked(svgToPngBase64).mockRejectedValue(new Error('no browser'));
+  it('rejects oversized references instead of burning tokens', async () => {
     await expect(
-      remixReferencePiece({ svgText: '<svg></svg>', name: 'x', extraPrompt: 'y' }),
-    ).rejects.toThrow(/browser/);
+      remixReferencePiece({ svgText: 'x'.repeat(200001), name: 'huge', extraPrompt: 'y' }),
+    ).rejects.toThrow(/too large/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -54,7 +51,7 @@ describe('remixReferencePiece (reference auto-substituted into vision)', () => {
       vi.fn(async () => ({ ok: false, json: async () => ({ error: 'model failed' }) })) as never,
     );
     await expect(
-      remixReferencePiece({ svgText: '<svg></svg>', name: 'x', extraPrompt: 'y' }),
+      remixReferencePiece({ svgText: pieceSvg, name: 'x', extraPrompt: 'y' }),
     ).rejects.toThrow(/model failed/);
   });
 });

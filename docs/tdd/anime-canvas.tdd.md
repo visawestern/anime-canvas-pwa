@@ -230,3 +230,9 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
 - UI: KatanaGallery on items page (7 piece imgs + remix buttons feeding EntityGenerator preset +
   room-scene example); EntityGenerator `preset` prop. 5 UI tests.
 - Verification: 260/260 tests, `tsc` 0, coverage 91.3%/81.5%/93.2%, build OK.
+
+## Session 17 — remix via SVG-as-text (user: it is text, it will follow the template)
+User killed the raster idea correctly: reference SVG goes into the prompt as fenced markup.
+- `lib/remix.ts` rewritten: brief + full piece markup + change request -> POST /api/generate (text);
+  200KB size guard; returns script + echo of the template. Rasterizer + its tests deleted (no dead code).
+- Verification: 263/263 tests, `tsc` 0, coverage 90.8%/81.5%/93.2%, build OK.

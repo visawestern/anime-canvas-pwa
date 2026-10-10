@@ -104,3 +104,14 @@ User errors fixed:
 - Regression test for the exact live step-11 failure (shade strokes o=0.4, no fills): normalize->schema->
   pipeline passes, no 422.
 - Verification: 154/154 tests, `tsc` 0, coverage 90.4% lines / 81.6% branches / 90.6% funcs, `next build` OK.
+
+## Session 6 — stale shell (SW cache-first), precache-all, EntityPreview live
+User screenshot: unstyled old markup (Times, blue links, old nav) — root cause was our own SW v1
+(cache-first `/`, worker bytes unchanged since creation so it never updated).
+- SW v2: network-first navigations + cache fallback; v3: precache ALL pages upfront
+  (/, /characters, /items, /locations, /scenes, manifest, both icons), updates always from network.
+  4 shell tests (precache list asserted).
+- EntityPreview shipped (bug 2 of session 5 was real: entity pages had no canvas at all).
+- Live: clean dev restart, all 5 pages 200 with admin-shell, layout.css 200 with theme classes,
+  sw.js serves v3. Stale `.next` 500 incident resolved via clean restart (never build over running dev).
+- Verification: 156/156 tests, `tsc` 0, `next build` OK. Server handed to user terminal.

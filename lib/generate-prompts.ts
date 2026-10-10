@@ -1,5 +1,5 @@
 /** Kind-specific director briefs: text prompt -> DrawingScript JSON. Grounded in risunci lessons. */
-import { lessonBlock } from './lesson-knowledge';
+import { lessonBlock, exampleBlock } from './lesson-knowledge';
 
 export type GenerateKind = 'character' | 'item' | 'location' | 'scene';
 
@@ -7,7 +7,9 @@ const BASE = `Output ONLY a DrawingScript JSON object (no prose, no markdown).
 Schema: style {palette, linePencil, lineInk}, layers [strings], steps (non-empty, kinds only pencil|ink|eraser|fill|shade), rig {bones, morphTargets}, anim {fps 1..24, loop, dirtyLayers subset of layers}.
 Strokes use SVG path data (absolute M/L/C/Z) in a 0..512 viewBox. Construction order: pose axis -> skeleton -> masses -> details -> ink -> eraser -> fill -> cel shade.
 
-${lessonBlock()}`;
+${lessonBlock()}
+
+${exampleBlock()}`;
 
 export const KIND_PROMPTS: Record<GenerateKind, string> = {
   character: `${BASE}

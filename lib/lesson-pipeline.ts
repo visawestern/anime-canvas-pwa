@@ -1,4 +1,5 @@
 import type { DrawingScript } from './drawing-script-schema';
+import type { ZodIssue } from 'zod';
 import { gradeOfStroke } from './lesson-knowledge';
 
 /**
@@ -48,4 +49,13 @@ export function validatePipeline(script: DrawingScript): string[] {
 export function validateSceneLayers(script: DrawingScript, characters: string[]): string[] {
   const layers = script.layers.map((l) => l.toLowerCase());
   return characters.filter((name) => !layers.some((l) => l.includes(name.toLowerCase())));
+}
+
+/** Bounded human summary of schema issues: first 5 + count (never the full dump). */
+export function summarizeIssues(issues: ZodIssue[], max = 5): string {
+  const lines = issues
+    .slice(0, max)
+    .map((i) => `${i.path.length > 0 ? i.path.join('.') : '(root)'}: ${i.message}`);
+  const more = issues.length > max ? ` ... and ${issues.length - max} more` : '';
+  return lines.join('; ') + more;
 }

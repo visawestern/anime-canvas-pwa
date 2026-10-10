@@ -6,6 +6,7 @@ vi.mock('@/lib/ollama-server', () => ({
 
 import { POST } from '@/app/api/draw/route';
 import { requestDrawingScript } from '@/lib/ollama-server';
+import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 
 function req(body: unknown) {
   return new Request('http://localhost/api/draw', {
@@ -66,5 +67,20 @@ describe('POST /api/draw', () => {
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error).toMatch(/ollama/i);
+  });
+
+  it('returns 422 (not 502) when model output fails schema, with bounded summary', async () => {
+    let zodErr: unknown;
+    try {
+      DrawingScriptSchema.parse({});
+    } catch (e) {
+      zodErr = e;
+    }
+    vi.mocked(requestDrawingScript).mockRejectedValue(zodErr);
+    const res = await POST(req({ imageBase64: 'AAA' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).not.toMatch(/unavailable/i);
+    expect(body.error.length).toBeLessThan(2000);
   });
 });

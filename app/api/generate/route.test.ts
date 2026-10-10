@@ -7,6 +7,7 @@ vi.mock('@/lib/ollama-server', () => ({
 
 import { POST } from '@/app/api/generate/route';
 import { requestDrawingScriptFromPrompt } from '@/lib/ollama-server';
+import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 
 function req(body: unknown) {
   return new Request('http://localhost/api/generate', {
@@ -65,5 +66,17 @@ describe('POST /api/generate', () => {
     vi.mocked(requestDrawingScriptFromPrompt).mockRejectedValue(new Error('down'));
     const res = await POST(req({ kind: 'scene', prompt: 'битва' }));
     expect(res.status).toBe(502);
+  });
+
+  it('returns 422 (not 502) when model output fails schema', async () => {
+    let zodErr: unknown;
+    try {
+      DrawingScriptSchema.parse({});
+    } catch (e) {
+      zodErr = e;
+    }
+    vi.mocked(requestDrawingScriptFromPrompt).mockRejectedValue(zodErr);
+    const res = await POST(req({ kind: 'character', prompt: 'герой' }));
+    expect(res.status).toBe(422);
   });
 });

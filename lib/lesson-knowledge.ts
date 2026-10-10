@@ -130,8 +130,7 @@ export const PRACTICE: string[] = [
 ];
 
 /** Compact brief appended to director prompts so Gemma draws by the lessons, not by guess. */
-export function lessonBlock(): string {
-  const grades = PENCIL_GRADES.map((g) => `${g.grade}(w ${g.w[0]}-${g.w[1]}, o ${g.o[0]}-${g.o[1]}): ${g.use}`).join('; ');
+export function lessonBlock(): string {  const grades = PENCIL_GRADES.map((g) => `${g.grade}(w ${g.w[0]}-${g.w[1]}, o ${g.o[0]}-${g.o[1]}): ${g.use}`).join('; ');
   return [
     'LESSON CANON (risunci + purmix + art-bogema + coddyschool). Obey in every DrawingScript:',
     `Pencil grades: ${grades}. Set each stroke w/o inside its grade band.`,
@@ -147,4 +146,18 @@ export function gradeOfStroke(s: { w?: number; o?: number }): PencilGrade | unde
   const w = s.w ?? 1.5;
   const o = s.o ?? 1;
   return PENCIL_GRADES.find((g) => w >= g.w[0] && w <= g.w[1] && o >= g.o[0] && o <= g.o[1]);
+}
+
+/**
+ * Fenced minimal example the model must copy EXACTLY (key names and shapes).
+ * Self-checked by test: the embedded JSON validates against DrawingScriptSchema.
+ */
+export function exampleBlock(): string {
+  return `Copy this EXACT shape — key names, nesting and value types must match precisely
+(style.palette is an ARRAY of strings, every step has a numeric id, every stroke has a string path,
+every bone has name/from/to, morphTargets is an ARRAY, anim.loop is a STRING):
+
+\`\`\`json
+{"style":{"palette":["#2b3a8f","#fff5f7"],"linePencil":"#6b7280","lineInk":"#14121f"},"layers":["construction","ink","fill"],"steps":[{"id":1,"kind":"pencil","layer":"construction","label":"axis","strokes":[{"path":"M10 10 L40 40","w":1.2,"o":0.5}]},{"id":2,"kind":"ink","layer":"ink","strokes":[{"path":"M10 10 L40 40","w":2.4,"o":1}]},{"id":3,"kind":"fill","layer":"fill","fills":[{"path":"M0 0 L10 0 L10 10 Z","color":"#fff5f7"}]}],"rig":{"bones":[],"morphTargets":[]},"anim":{"fps":12,"loop":"idle","dirtyLayers":[]}}
+\`\`\``;
 }

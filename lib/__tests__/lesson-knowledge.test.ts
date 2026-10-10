@@ -9,7 +9,9 @@ import {
   MATERIALS,
   PRACTICE,
   lessonBlock,
+  exampleBlock,
 } from '@/lib/lesson-knowledge';
+import { DrawingScriptSchema } from '@/lib/drawing-script-schema';
 
 describe('lesson-knowledge (purmix + risunci + art-bogema + coddyschool)', () => {
   it('lists all four lesson sources with urls', () => {
@@ -66,5 +68,14 @@ describe('lesson-knowledge (purmix + risunci + art-bogema + coddyschool)', () =>
     expect(text).toMatch(/поз|pose/i);
     expect(text).toMatch(/эмоц|emotion/i);
     expect(text).toMatch(/кисимото|kishimoto|ода|oda|миура|miura|clamp/i);
+  });
+
+  it('exampleBlock contains a fenced example that validates against the schema', () => {
+    const block = exampleBlock();
+    const fenced = block.match(/```json\s*([\s\S]*?)```/);
+    expect(fenced).toBeTruthy();
+    const parsed = JSON.parse(fenced![1]) as unknown;
+    expect(() => DrawingScriptSchema.parse(parsed)).not.toThrow();
+    expect(block).toMatch(/EXACT|точно/i);
   });
 });

@@ -1,5 +1,6 @@
+import { ZodError } from 'zod';
 import { requestDrawingScript } from '@/lib/ollama-server';
-import { validatePipeline } from '@/lib/lesson-pipeline';
+import { validatePipeline, summarizeIssues } from '@/lib/lesson-pipeline';
 
 export async function POST(req: Request): Promise<Response> {
   let body: { imageBase64?: unknown; prompt?: unknown };
@@ -25,6 +26,15 @@ export async function POST(req: Request): Promise<Response> {
     }
     return Response.json(script, { status: 200 });
   } catch (e) {
+    if (e instanceof ZodError) {
+      return Response.json(
+        {
+          error: `model output failed schema: ${summarizeIssues(e.issues)}`,
+          violations: e.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`),
+        },
+        { status: 422 },
+      );
+    }
     return Response.json({ error: `ollama unavailable: ${(e as Error).message}` }, { status: 502 });
   }
 }

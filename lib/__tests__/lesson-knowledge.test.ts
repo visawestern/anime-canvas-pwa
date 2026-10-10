@@ -80,12 +80,12 @@ describe('lesson-knowledge (purmix + risunci + art-bogema + coddyschool)', () =>
     expect(block).toMatch(/EXACT|точно/i);
   });
 
-  it('example is strokes-only line art (no fill steps, like the reference)', () => {
+  it('example demonstrates two phases (strokes + a colored fill step)', () => {
     const block = exampleBlock();
     const fenced = block.match(/```json\s*([\s\S]*?)```/);
-    const parsed = JSON.parse(fenced![1]) as { steps: { kind: string }[] };
+    const parsed = JSON.parse(fenced![1]) as { steps: { kind: string; fills?: { color: string }[] }[] };
     expect(parsed.steps.length).toBeGreaterThan(0);
-    expect(parsed.steps.every((s) => s.kind !== 'fill')).toBe(true);
+    expect(parsed.steps.some((s) => s.kind === 'fill' && s.fills?.[0]?.color)).toBe(true);
   });
 
   it('snapStrokeToGrade tolerates near-misses (live o=0.4 case)', () => {

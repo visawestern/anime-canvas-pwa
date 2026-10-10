@@ -26,14 +26,15 @@ export function svgCraftBlock(): string {
 }
 
 /**
- * LINE ART mode (Wikimedia Anime_Girl reference + Surbhi write-on film):
- * strokes-only pictures, one <g> per part drawing itself in sequence.
+ * LINE ART + COLOR (Wikimedia Anime_Girl reference + Surbhi write-on film, two phases):
+ * Phase 1 draws strokes only (one <g> per part, sequenced by unique step ids);
+ * Phase 2 fades Gemma's flat colors in (fillin) per <g> — fills carry CORRECT final colors.
  */
 export function lineArtBlock(): string {
   return [
-    'LINE ART (strict): NO filled shapes — every form as pencil/ink strokes only; shading ONLY with B-family hatching strokes, never fills.',
-    'One <g> per part (actor_<name>, hair, face, backdrop...): finish each <g> fully before starting the next.',
-    'Unique step ids sequence the film like Surbhi path ids with delays — the viewer watches each <g> draw itself.',
+    'LINE ART + COLOR in two phases (Anime_Girl reference + Surbhi write-on):',
+    'Phase 1 — pencil write-on, strokes only: one <g> per part (actor_<name>, hair, face...), finish each <g> fully before the next; unique step ids sequence the film like Surbhi path ids with delays.',
+    'Phase 2 — fillin: every fill carries its CORRECT final flat color and fades in after its <g> outlines are drawn; shading ONLY with B-family hatching strokes plus these flat fills, never gradients.',
     'Retrace outer contours sharp and confident like the Anime_Girl reference; hair masses behind eyes, brows over hair.',
   ].join('\n');
 }
@@ -123,8 +124,7 @@ export function auditCraft(script: DrawingScript): CraftAudit {
       if (anchors > MAX_ANCHORS_PER_PATH) {
         findings.push({ rule: 'anchors', detail: `step ${s.id}: ${anchors} anchors in one fill (simplify)` });
       }
-      // line-art signal (not a gate): flat fills break the Surbhi write-on look — hatch instead
-      findings.push({ rule: 'fills', detail: `step ${s.id}: flat fill — line-art mode prefers hatching strokes` });
+      // fills are legitimate Phase-2 color (no line-art finding); still check geometry below
       if (hasOverPrecise(d)) {
         findings.push({ rule: 'precision', detail: `step ${s.id}: 3+ decimals in fill (max 2)` });
       }

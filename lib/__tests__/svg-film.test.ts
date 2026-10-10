@@ -28,13 +28,35 @@ describe('scriptToSvg (Surbhi write-on film)', () => {
     expect(svg).toMatch(/--dl:/);
     expect(svg).toMatch(/--d:/);
     expect(total).toBeGreaterThan(0);
-    expect(schedule.map((s) => s.layer)).toEqual(['construction', 'ink']);
+    expect(schedule.filter((s) => s.kind === 'layer').map((s) => s.layer)).toEqual(['construction', 'ink']);
+    expect(schedule[schedule.length - 1]).toMatchObject({ kind: 'fills' });
   });
 
   it('renders fills as contours (reference forces fill:none on everything)', () => {
     const { svg } = scriptToSvg(script);
-    expect(svg).not.toMatch(/fill="#fff"/);
+    expect(svg).toContain('fill="none"');
     expect(svg).toContain('M0 0 L10 0 L10 10 Z');
+  });
+
+  it('fill phase: Gemma colors fade in after strokes (draw + fillin like the reference)', () => {
+    const { svg, schedule, total } = scriptToSvg(script);
+    expect(svg).toContain('fill="#fff"');
+    expect(svg).toContain('fill-opacity="0"');
+    expect(svg).toMatch(/--fl:/);
+    expect(svg).toMatch(/--fd:/);
+    const fills = schedule.find((s) => s.kind === 'fills');
+    expect(fills).toBeTruthy();
+    expect(fills!.t).toBeGreaterThan(0);
+    const strokeDelays = [...svg.matchAll(/--dl:([\d.]+)s/g)].map((m) => Number(m[1]));
+    const fillDelays = [...svg.matchAll(/--fl:([\d.]+)s/g)].map((m) => Number(m[1]));
+    expect(Math.min(...fillDelays)).toBeGreaterThanOrEqual(Math.max(...strokeDelays));
+    expect(total).toBeGreaterThan(Math.max(...fillDelays));
+  });
+
+  it('no fills entry when the script has no fills (pure line art)', () => {
+    const noFills = { ...script, steps: script.steps.filter((s) => (s as { kind: string }).kind !== 'shade') };
+    const film = scriptToSvg(noFills as unknown as DrawingScript);
+    expect(film.schedule.some((s) => s.kind === 'fills')).toBe(false);
   });
 
   it('grades set stroke width, ink draws dark like the reference pencil', () => {

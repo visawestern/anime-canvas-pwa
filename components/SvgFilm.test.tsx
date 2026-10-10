@@ -52,4 +52,17 @@ describe('SvgFilm (reference-style write-on film)', () => {
     expect(html).toContain('layer-ink" transform="translate(8 0)"');
     expect(html).not.toContain('layer-construction" transform');
   });
+
+  it('shows the color phase row without nudge buttons', () => {
+    const scriptFill = {
+      ...script,
+      steps: [
+        ...script.steps,
+        { id: 3, kind: 'fill', layer: 'fill', fills: [{ path: 'M0 0 L10 0 L10 10 Z', color: '#fff' }] },
+      ],
+    } as unknown as DrawingScript;
+    render(<SvgFilm script={scriptFill} />);
+    const row = screen.getByText(/заливка/).closest('li')!;
+    expect(within(row).queryByRole('button')).toBeNull();
+  });
 });

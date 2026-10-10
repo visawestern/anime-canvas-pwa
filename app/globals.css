@@ -154,14 +154,19 @@ canvas {
   border: 1px solid var(--border);
 }
 .svgfilm path {
-  fill: none !important;
-  will-change: stroke-dashoffset;
+  will-change: stroke-dashoffset, fill-opacity;
   stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 1; stroke-dashoffset: 1;
   animation: svgf-draw var(--d) linear forwards;
   animation-delay: var(--dl);
 }
 @keyframes svgf-draw { to { stroke-dashoffset: 0; } }
+/* Phase 2 (reference fillin): Gemma colors fade in after the stroke phase */
+.svgfilm path.fillin {
+  animation: svgf-draw var(--d) linear forwards, svgf-fillin var(--fd) linear forwards;
+  animation-delay: var(--dl), var(--fl);
+}
+@keyframes svgf-fillin { to { fill-opacity: 1; } }
 .bar-wrap { height: 10px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
 .bar-wrap > div { height: 100%; background: linear-gradient(90deg, var(--primary-2), var(--primary)); }
 .page-title { font-size: 24px; font-weight: 800; margin: 0 0 4px; }

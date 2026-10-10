@@ -173,3 +173,14 @@ off, per-<g> SCHEDULE with sidebar/progress/clock/speed/replay.
   (character moves without redraw). 3 tests (incl. catching a real id-prefix bug).
 - EntityPreview migrated from canvas to SVG film (same props); dependents updated.
 - Verification: 216/216 tests, `tsc` 0, coverage 90.5%/80.1%/91%, build OK.
+
+## Session 12 — two-phase film (user re-read the reference: fills DO exist)
+Re-read found what was missed: EVERY path carries `--fl/--fd/--fo/--sc/--sso`; TOTAL=274s.
+Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — user called it exactly.
+- `scriptToSvg`: fills emitted with real color + `fill-opacity=0` + `class=fillin` + `--fl` after the
+  whole stroke phase; schedule gains a fills entry (no nudge buttons); total covers the color phase.
+- CSS: removed `fill:none !important` (it would kill colors forever); `.fillin` runs draw+fillin with
+  two delays; `@keyframes svgf-fillin`.
+- Prompts: lineArtBlock rewritten to two-phase (strokes-only Phase 1, CORRECT-color fillin Phase 2);
+  example regained a colored fill step; audit 'fills' finding removed (fills legitimate again).
+- Verification: 219/219 tests, `tsc` 0, coverage 90.6%/80.0%/91.0%, build OK.

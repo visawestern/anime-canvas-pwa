@@ -10,6 +10,7 @@ export interface FilmScheduleEntry {
   layer: string;
   label: string;
   t: number;
+  kind: 'layer' | 'fills';
 }
 
 export interface FilmScript {
@@ -21,6 +22,8 @@ export interface FilmScript {
 
 const STEP_GAP = 0.35;
 const STROKE_DUR = 0.9;
+const FILL_GAP = 0.3;
+const FILL_DUR = 0.8;
 
 function escId(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'layer';
@@ -37,7 +40,17 @@ export function scriptToSvg(
   const schedule: FilmScheduleEntry[] = [];
   const layerStart = new Map<string, number>();
   let t = 0;
+  let fillIdx = 0;
   const steps = [...(script.steps ?? [])].sort((a, b) => a.id - b.id);
+
+  // stroke phase length first: fills fade in only after every outline is drawn
+  let strokeCount = 0;
+  for (const step of steps) {
+    for (const s of step.strokes ?? []) {
+      if (s && typeof s.path === 'string' && s.path) strokeCount++;
+    }
+  }
+  const strokeEnd = strokeCount > 0 ? (strokeCount - 1) * gap + dur : 0;
 
   const emit = (layer: string, label: string, d: string, id: string, style: string, width: number) => {
     if (!byLayer.has(layer)) {
@@ -48,12 +61,26 @@ export function scriptToSvg(
     t += gap;
     if (!layerStart.has(layer)) {
       layerStart.set(layer, delay);
-      schedule.push({ layer, label, t: delay });
+      schedule.push({ layer, label, t: delay, kind: 'layer' });
     }
     byLayer
       .get(layer)!
       .push(
         `<path id="${id}" d="${d}" pathLength="1" fill="none" stroke="${style}" stroke-width="${width}" style="--dl:${delay.toFixed(2)}s;--d:${dur}s"/>`,
+      );
+  };
+
+  const emitFill = (layer: string, d: string, id: string, color: string, fl: number) => {
+    if (!byLayer.has(layer)) {
+      byLayer.set(layer, []);
+      layers.push(layer);
+    }
+    const delay = t;
+    t += gap;
+    byLayer
+      .get(layer)!
+      .push(
+        `<path id="${id}" class="fillin" d="${d}" pathLength="1" fill="${color}" fill-opacity="0" stroke="#9a9aa5" stroke-width="1" style="--dl:${delay.toFixed(2)}s;--d:${dur}s;--fl:${fl.toFixed(2)}s;--fd:${FILL_DUR}s"/>`,
       );
   };
 
@@ -70,15 +97,23 @@ export function scriptToSvg(
     let fi = 0;
     for (const f of step.fills ?? []) {
       if (!f || typeof f.path !== 'string' || !f.path) continue;
-      emit(layer, label, f.path, `s${step.id}-f${fi++}`, '#9a9aa5', 1);
+      // Phase 2 (fillin like the reference): outline draws in its own slot,
+      // Gemma's color fades in after the whole stroke phase.
+      const fl = strokeEnd + fillIdx * FILL_GAP;
+      fillIdx++;
+      emitFill(layer, f.path, `s${step.id}-f${fi++}`, typeof f.color === 'string' ? f.color : '#999999', fl);
     }
   }
 
   const groups = layers.map((l) => `<g id="layer-${l}">${(byLayer.get(l) ?? []).join('')}</g>`).join('');
+  const fillEnd = fillIdx > 0 ? strokeEnd + (fillIdx - 1) * FILL_GAP + FILL_DUR : 0;
+  if (fillIdx > 0) {
+    schedule.push({ layer: '__fills', label: 'заливка цветом', t: strokeEnd, kind: 'fills' });
+  }
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-film="animecanvas">${groups}</svg>`,
     schedule,
-    total: t + dur,
+    total: Math.max(t + dur, fillEnd),
   };
 }
 

@@ -86,27 +86,35 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
         ))}
       </div>
       <ul className="log" data-testid="film-layers">
-        {film.schedule.map((s) => (
-          <li key={s.layer} className={current === s.layer ? 'on' : ''}>
-            <span>
-              {s.layer} <span className="badge">{s.label}</span>
-            </span>{' '}
-            <span className="btn-row">
-              <button type="button" aria-label={`влево ${s.layer}`} onClick={() => nudge(s.layer, -NUDGE, 0)}>
-                ◀
-              </button>
-              <button type="button" aria-label={`вправо ${s.layer}`} onClick={() => nudge(s.layer, NUDGE, 0)}>
-                ▶
-              </button>
-              <button type="button" aria-label={`вверх ${s.layer}`} onClick={() => nudge(s.layer, 0, -NUDGE)}>
-                ▲
-              </button>
-              <button type="button" aria-label={`вниз ${s.layer}`} onClick={() => nudge(s.layer, 0, NUDGE)}>
-                ▼
-              </button>
-            </span>
-          </li>
-        ))}
+        {film.schedule.map((s) =>
+          s.kind === 'fills' ? (
+            <li key="__fills">
+              <span>
+                {s.label} <span className="badge">фаза 2</span>
+              </span>
+            </li>
+          ) : (
+            <li key={s.layer} className={current === s.layer ? 'on' : ''}>
+              <span>
+                {s.layer} <span className="badge">{s.label}</span>
+              </span>{' '}
+              <span className="btn-row">
+                <button type="button" aria-label={`влево ${s.layer}`} onClick={() => nudge(s.layer, -NUDGE, 0)}>
+                  ◀
+                </button>
+                <button type="button" aria-label={`вправо ${s.layer}`} onClick={() => nudge(s.layer, NUDGE, 0)}>
+                  ▶
+                </button>
+                <button type="button" aria-label={`вверх ${s.layer}`} onClick={() => nudge(s.layer, 0, -NUDGE)}>
+                  ▲
+                </button>
+                <button type="button" aria-label={`вниз ${s.layer}`} onClick={() => nudge(s.layer, 0, NUDGE)}>
+                  ▼
+                </button>
+              </span>
+            </li>
+          ),
+        )}
       </ul>
     </div>
   );

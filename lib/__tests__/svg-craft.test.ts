@@ -43,10 +43,11 @@ describe('svgCraftBlock (distilled logo-craft)', () => {
 });
 
 describe('lineArtBlock (Anime_Girl reference + Surbhi write-on)', () => {
-  it('demands strokes-only art, one <g> per part sequenced like Surbhi ids', () => {
+  it('demands two phases (write-on per <g>, then Gemma color fillin) like Surbhi ids', () => {
     const b = lineArtBlock();
     expect(b).toContain('LINE ART');
-    expect(b).toMatch(/no fill/i);
+    expect(b).toMatch(/phase 1|phase 2/i);
+    expect(b).toMatch(/fillin|correct.*color/i);
     expect(b).toMatch(/<g>|Surbhi/i);
   });
 
@@ -57,10 +58,10 @@ describe('lineArtBlock (Anime_Girl reference + Surbhi write-on)', () => {
     expect(ANIME_DIRECTOR_PROMPT).toContain('LINE ART');
   });
 
-  it('flags flat fills as a line-art signal (score, not gate)', () => {
+  it('accepts fills for the color phase (no line-art finding anymore)', () => {
     const a = auditCraft(scriptWith({ fills: [{ path: 'M0 0 L100 0 L100 100 Z', color: '#fff' }] }));
-    expect(txt(a)).toMatch(/line-art|hatch/i);
-    expect(a.score).toBeLessThan(100);
+    expect(txt(a)).not.toMatch(/line-art|hatch/i);
+    expect(a.score).toBe(100);
   });
 
   it('is wired into every generation prompt', () => {

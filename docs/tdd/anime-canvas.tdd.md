@@ -163,3 +163,13 @@ User: count/token caps from OmniSVG are useless — remove. Kept: coordinate pre
 - Inverted test now locks the new behavior (25 steps → no bloat finding); clean-audit fixture aligned
   to strokes-only; precision rule reworded (integers preferred, max 2 decimals).
 - Verification: 208/208 tests, `tsc` 0, coverage 90.0% lines / 80.4% branches / 91.5% funcs, build OK.
+
+## Session 11 — reference-style SVG film (user: draw like anime_girl_pencil.html)
+Studied the file: real SVG DOM, `pathLength="1"` + `--dl/--d` dash write-on (Surbhi 1:1), fills forced
+off, per-<g> SCHEDULE with sidebar/progress/clock/speed/replay.
+- `lib/svg-film.ts`: scriptToSvg (one <g> per layer, unique path ids, fills as contours, grade
+  widths, cumulative stagger), shiftLayerMarkup (translate accumulate, unknown layer throws). 5 tests.
+- `SvgFilm`: svg + progress bar/clock/speed (playbackRate)/replay/layer list/nudge buttons per layer
+  (character moves without redraw). 3 tests (incl. catching a real id-prefix bug).
+- EntityPreview migrated from canvas to SVG film (same props); dependents updated.
+- Verification: 216/216 tests, `tsc` 0, coverage 90.5%/80.1%/91%, build OK.

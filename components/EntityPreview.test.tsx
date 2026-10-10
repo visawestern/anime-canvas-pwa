@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-
-vi.mock('@/lib/pencil-renderer', () => ({
-  playScriptOnCanvas: vi.fn(async () => {}),
-}));
-
+import { render, screen, fireEvent } from '@testing-library/react';
 import { EntityPreview } from '@/components/EntityPreview';
-import { playScriptOnCanvas } from '@/lib/pencil-renderer';
 
 const script = {
   style: { palette: ['#fff'], linePencil: '#666', lineInk: '#111' },
@@ -26,22 +20,19 @@ describe('EntityPreview (generated art actually plays)', () => {
 
   it('renders nothing without a script', () => {
     render(<EntityPreview script={null} />);
-    expect(screen.queryByTestId('entity-preview')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('film-stage')).not.toBeInTheDocument();
   });
 
-  it('plays the script on its canvas and reports step count', async () => {
-    render(<EntityPreview script={script} />);
-    expect(screen.getByTestId('entity-preview').tagName).toBe('CANVAS');
-    await waitFor(() => expect(playScriptOnCanvas).toHaveBeenCalled());
-    const steps = vi.mocked(playScriptOnCanvas).mock.calls[0][1] as unknown[];
-    expect(steps).toHaveLength(2);
-    expect(screen.getByText(/2 шагов/i)).toBeInTheDocument();
+  it('plays the script as an SVG film and reports steps/layers', () => {
+    const { container } = render(<EntityPreview script={script} />);
+    expect(container.querySelectorAll('svg path').length).toBe(2);
+    expect(screen.getByText(/шагов: 2/)).toBeInTheDocument();
+    expect(screen.getByText(/слоёв: 2/)).toBeInTheDocument();
   });
 
-  it('replay button plays again', async () => {
-    render(<EntityPreview script={script} />);
-    await waitFor(() => expect(playScriptOnCanvas).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: /переиграть/i }));
-    await waitFor(() => expect(playScriptOnCanvas).toHaveBeenCalledTimes(2));
+  it('replay button keeps the film intact', () => {
+    const { container } = render(<EntityPreview script={script} />);
+    fireEvent.click(screen.getByRole('button', { name: /сначала/i }));
+    expect(container.querySelectorAll('svg path').length).toBe(2);
   });
 });

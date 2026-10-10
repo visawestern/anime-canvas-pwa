@@ -30,7 +30,7 @@ describe('EntityLibrary', () => {
     fireEvent.click(screen.getByRole('button', { name: /открыть/i }));
     const dlg = await screen.findByRole('dialog');
     expect(dlg).toHaveTextContent('Аватар-Меч');
-    expect(dlg.querySelector('canvas')).toBeInTheDocument();
+    expect(dlg.querySelector('[data-testid="film-stage"]')).toBeInTheDocument();
     expect(e.script.steps).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: /закрыть/i }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

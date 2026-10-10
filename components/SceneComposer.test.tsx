@@ -98,7 +98,7 @@ describe('SceneComposer (cast + missing proposals + paused queue)', () => {
     render(<SceneComposer />);
     fireEvent.change(screen.getByLabelText(/промпт сцены/i), { target: { value: 'тихая сцена' } });
     fireEvent.click(screen.getByRole('button', { name: /собрать сцену/i }));
-    await waitFor(() => expect(screen.getByTestId('entity-preview')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('film-stage')).toBeInTheDocument());
   });
 
   it('forks a scene keeping parent link', async () => {

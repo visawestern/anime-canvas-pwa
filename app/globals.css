@@ -1,0 +1,4 @@
+:root { color-scheme: dark; }
+body { margin: 0; background: #14121f; color: #f5f0ff; font-family: system-ui, sans-serif; }
+main { max-width: 900px; margin: 0 auto; padding: 24px; }
+canvas { background: #f7f2e8; border-radius: 12px; width: 100%; touch-action: none; }

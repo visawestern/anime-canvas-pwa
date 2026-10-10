@@ -1,0 +1,13 @@
+{
+  "name": "AnimeCanvas — живой карандаш",
+  "short_name": "AnimeCanvas",
+  "description": "Gemma анализирует фото, Canvas рисует аниме карандашом и анимирует только движущиеся слои.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14121f",
+  "theme_color": "#14121f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

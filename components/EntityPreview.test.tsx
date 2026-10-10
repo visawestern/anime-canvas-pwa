@@ -27,7 +27,7 @@ describe('EntityPreview (generated art actually plays)', () => {
     const { container } = render(<EntityPreview script={script} />);
     expect(container.querySelectorAll('svg path').length).toBe(2);
     expect(screen.getByText(/шагов: 2/)).toBeInTheDocument();
-    expect(screen.getByText(/слоёв: 2/)).toBeInTheDocument();
+    expect(screen.getByTestId('film-check').textContent).toMatch(/слоёв: 2/);
   });
 
   it('replay button keeps the film intact', () => {

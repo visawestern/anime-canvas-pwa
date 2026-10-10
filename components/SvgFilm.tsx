@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { scriptToSvg, shiftLayerMarkup } from '@/lib/svg-film';
+import { scriptToSvg, shiftLayerMarkup, verifyFilm } from '@/lib/svg-film';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
 
 const NUDGE = 8;
@@ -65,6 +65,7 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
     setMoves((prev) => ({ ...prev, [layer]: { dx: (prev[layer]?.dx ?? 0) + dx, dy: (prev[layer]?.dy ?? 0) + dy } }));
 
   const current = [...film.schedule].reverse().find((s) => elapsed >= s.t)?.layer ?? null;
+  const check = useMemo(() => verifyFilm(svg), [svg]);
 
   return (
     <div className="card" aria-label="SVG-плёнка">
@@ -73,6 +74,11 @@ export function SvgFilm({ script }: { script: DrawingScript }) {
       </div>
       <p data-testid="film-clock" className="status">
         {fmt(elapsed)} / {fmt(film.total)}
+      </p>
+      <p data-testid="film-check" className="status">
+        {check.ok
+          ? `Проверка: OK · путей: ${check.paths} · слоёв: ${check.layers.length}`
+          : `Проверка: issues: ${check.issues.slice(0, 3).join('; ')}`}
       </p>
       <div ref={rootRef} className="svgfilm" key={nonce} data-testid="film-stage" dangerouslySetInnerHTML={{ __html: svg }} />
       <div className="btn-row">

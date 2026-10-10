@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scriptToSvg, shiftLayerMarkup } from '@/lib/svg-film';
+import { scriptToSvg, shiftLayerMarkup, verifyFilm } from '@/lib/svg-film';
 import type { DrawingScript } from '@/lib/drawing-script-schema';
 
 const script = {
@@ -47,8 +47,12 @@ describe('scriptToSvg (Surbhi write-on film)', () => {
     const fills = schedule.find((s) => s.kind === 'fills');
     expect(fills).toBeTruthy();
     expect(fills!.t).toBeGreaterThan(0);
-    const strokeDelays = [...svg.matchAll(/--dl:([\d.]+)s/g)].map((m) => Number(m[1]));
+    // stroke outlines (non-fillin paths) all start before any color fades in
+    const strokeDelays = [...svg.matchAll(/<path(?![^>]*class="fillin")[^>]*--dl:([\d.]+)s/g)].map((m) =>
+      Number(m[1]),
+    );
     const fillDelays = [...svg.matchAll(/--fl:([\d.]+)s/g)].map((m) => Number(m[1]));
+    expect(strokeDelays.length).toBe(2);
     expect(Math.min(...fillDelays)).toBeGreaterThanOrEqual(Math.max(...strokeDelays));
     expect(total).toBeGreaterThan(Math.max(...fillDelays));
   });
@@ -59,10 +63,47 @@ describe('scriptToSvg (Surbhi write-on film)', () => {
     expect(film.schedule.some((s) => s.kind === 'fills')).toBe(false);
   });
 
+  it('honors custom gap/dur options', () => {
+    const film = scriptToSvg(script, { gap: 1, dur: 2 });
+    expect(film.svg).toContain('--dl:1.00s');
+  });
+
+  it('defaults uncolored fills to gray instead of crashing', () => {
+    const noColor = {
+      ...script,
+      steps: [{ id: 1, kind: 'fill', layer: 'a', fills: [{ path: 'M0 0 L10 0 L10 10 Z' }] }],
+    } as unknown as DrawingScript;
+    expect(scriptToSvg(noColor).svg).toContain('fill="#999999"');
+  });
+
   it('grades set stroke width, ink draws dark like the reference pencil', () => {
     const { svg } = scriptToSvg(script);
     expect(svg).toContain('stroke-width="2.4"');
     expect(svg).toContain('stroke-width="1.2"');
+  });
+
+  it('uniform drawing speed: duration proportional to path length', () => {
+    const lenScript = {
+      ...script,
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L100 0', w: 1.2, o: 0.5 }] },
+        { id: 2, kind: 'pencil', layer: 'a', strokes: [{ path: 'M0 0 L1000 0', w: 1.2, o: 0.5 }] },
+      ],
+    } as unknown as DrawingScript;
+    const { svg } = scriptToSvg(lenScript);
+    const durs = [...svg.matchAll(/--d:([\d.]+)s/g)].map((m) => Number(m[1]));
+    expect(durs).toHaveLength(2);
+    expect(durs[1] / durs[0]).toBeCloseTo(10, 0);
+  });
+
+  it('dots pop instantly (zero length draws in zero time, by design)', () => {
+    const dotScript = {
+      ...script,
+      steps: [{ id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M5 5 L5 5', w: 1.2, o: 0.5 }] }],
+    } as unknown as DrawingScript;
+    const { svg } = scriptToSvg(dotScript);
+    const durs = [...svg.matchAll(/--d:([\d.]+)s/g)].map((m) => Number(m[1]));
+    expect(durs[0]).toBeCloseTo(0, 2);
   });
 });
 
@@ -79,5 +120,61 @@ describe('shiftLayerMarkup (move a part without redrawing)', () => {
   it('throws on unknown layer (no silent no-op)', () => {
     const { svg } = scriptToSvg(script);
     expect(() => shiftLayerMarkup(svg, 'layer-nope', 1, 1)).toThrow(/nope/);
+  });
+});
+
+describe('verifyFilm (re-check of the finished drawing)', () => {
+  it('passes a healthy film with counts', () => {
+    const { svg } = scriptToSvg(script);
+    const v = verifyFilm(svg);
+    expect(v.ok).toBe(true);
+    expect(v.paths).toBe(3);
+    expect(v.layers).toEqual(['layer-construction', 'layer-ink']);
+    expect(v.issues).toEqual([]);
+  });
+
+  it('flags fully off-canvas art (drawn outside the frame)', () => {
+    const { svg } = scriptToSvg({
+      ...script,
+      steps: [{ id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M900 900 L950 950', w: 1.2, o: 0.5 }] }],
+    } as unknown as DrawingScript);
+    const v = verifyFilm(svg);
+    expect(v.ok).toBe(false);
+    expect(v.issues.join(' ')).toMatch(/frame|кадр|outside/i);
+  });
+
+  it('catches every out-of-frame side (all bounds operands)', () => {
+    const sides = {
+      ...script,
+      steps: [
+        { id: 1, kind: 'pencil', layer: 'a', strokes: [{ path: 'M-100 10 L-90 20', w: 1.2, o: 0.5 }] },
+        { id: 2, kind: 'pencil', layer: 'a', strokes: [{ path: 'M10 -100 L20 -90', w: 1.2, o: 0.5 }] },
+        { id: 3, kind: 'pencil', layer: 'a', strokes: [{ path: 'M10 900 L20 950', w: 1.2, o: 0.5 }] },
+      ],
+    } as unknown as DrawingScript;
+    const v = verifyFilm(scriptToSvg(sides).svg);
+    expect(v.ok).toBe(false);
+    expect(v.issues).toHaveLength(3);
+  });
+
+  it('ignores the internal fills marker as a layer', () => {
+    const v = verifyFilm('<svg viewBox="0 0 512 512"><g id="__fills"><path id="p" d="M0 0 L10 10"/></g></svg>');
+    expect(v.layers).not.toContain('__fills');
+    expect(v.paths).toBe(1);
+  });
+
+  it('flags unparseable and degenerate paths without throwing', () => {
+    const v = verifyFilm(
+      '<svg viewBox="0 0 512 512"><g id="layer-a"><path id="p1" d="M0 0 X1 1"/><path id="p2" d="M5 5"/></g></svg>',
+    );
+    expect(v.ok).toBe(false);
+    expect(v.issues.join(' ')).toMatch(/parse|unparseable/i);
+    expect(v.issues.join(' ')).toMatch(/degenerate|точк/i);
+  });
+
+  it('empty film is not ok (nothing was drawn)', () => {
+    const v = verifyFilm('<svg viewBox="0 0 512 512"></svg>');
+    expect(v.ok).toBe(false);
+    expect(v.paths).toBe(0);
   });
 });

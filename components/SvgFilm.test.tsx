@@ -65,4 +65,16 @@ describe('SvgFilm (reference-style write-on film)', () => {
     const row = screen.getByText(/заливка/).closest('li')!;
     expect(within(row).queryByRole('button')).toBeNull();
   });
+
+  it('shows post-draw verification counts (re-check of the finished art)', () => {
+    render(<SvgFilm script={script} />);
+    expect(screen.getByTestId('film-check').textContent).toMatch(/путей: 2/);
+    expect(screen.getByTestId('film-check').textContent).toMatch(/слоёв: 2/);
+  });
+
+  it('empty script verifies as nothing-drawn (no crash, no NaN bar)', () => {
+    const empty = { ...script, steps: [] } as unknown as DrawingScript;
+    render(<SvgFilm script={empty} />);
+    expect(screen.getByTestId('film-check').textContent).toMatch(/empty|nothing/i);
+  });
 });

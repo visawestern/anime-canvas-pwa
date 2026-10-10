@@ -184,3 +184,12 @@ Phase 1 draws strokes (dashoffset), Phase 2 fades Gemma colors in (fillin) — u
 - Prompts: lineArtBlock rewritten to two-phase (strokes-only Phase 1, CORRECT-color fillin Phase 2);
   example regained a colored fill step; audit 'fills' finding removed (fills legitimate again).
 - Verification: 219/219 tests, `tsc` 0, coverage 90.6%/80.0%/91.0%, build OK.
+
+## Session 13 — uniform speed + post-draw verification (user order)
+- Uniform drawing speed: `--d` now proportional to parsed path length (260 units/s, zero-length dots
+  pop instantly by design); unparseable paths fall back to the fixed beat. Long limbs no longer draw
+  faster than short details. 2 timing tests.
+- `verifyFilm(svg)`: re-checks the finished markup — path counts per layer, unparseable/degenerate/
+  off-frame issues, empty film flag. `SvgFilm` shows the verdict line (`film-check` testid).
+  4 verification tests + 1 component test.
+- Verification: 231/231 tests, `tsc` 0, coverage 90.7%/80.5%/90.7%, build OK.

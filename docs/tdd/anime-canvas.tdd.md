@@ -74,3 +74,22 @@ objects, steps without id/path, bones without name/from/to, morphTargets as obje
   pencil(HB 1.2/0.5)x3 -> ink -> fill -> shade, palette array, item-template layers.
 - Verification: 130/130 tests, `tsc` 0, coverage 90.6% lines / 81.6% branches / 90.5% funcs, `next build` OK.
 - Commits 4eb4893 + buildinfo-ignore pushed to https://github.com/visawestern/anime-canvas-pwa (main).
+
+## Session 4 — pipeline strictness fixes, template gallery, admin UI
+User errors fixed:
+- `shade without fills draws nothing` + grade near-miss 422s: renderer now draws hatching strokes of
+  fill/shade steps (purmix shadowing); validator accepts shade/fill with strokes; eraser strokes exempt
+  from grade bands; `snapStrokeToGrade` (tolerance w±0.3/o±0.15) + kind defaults (pencil->HB, ink->B6) in
+  normalizer; pipeline validation moved inside server repair-retry (auto-repair, bounded messages);
+  route 422 strings bounded (first 5 + count).
+- Prompt template gallery (`lib/prompt-templates.ts`, 12 templates x3 per kind with example names + hints),
+  pickers in EntityGenerator + SceneComposer. 5 gallery tests.
+- Live verification per kind via real model: character 200/11 steps, item 200/8 (one transient non-JSON
+  repaired on retry), location 200/8 with 3-plane layers, scene 200/13 with actor layers.
+- Live-found bug fixed: model transliterates actor layers (actor_aya) — `validateSceneLayers` now matches
+  via Russian transliteration variants (й->y/i). Test from live evidence.
+- Admin UI (Vuexy-style, no new deps): dark sidebar + topbar + cards + badges + dialogs in globals.css,
+  SideNav with active link, all components/pages restyled (labels/roles/testids preserved).
+  Found by check: stale `.next` dev cache 500 on /scenes after prod build — fixed by clean dev restart.
+- Verification: 148/148 tests, `tsc` 0, coverage 91.2% lines / 81.3% branches / 90.5% funcs, `next build` OK,
+  all 5 pages serve admin shell (curl-checked markup).
